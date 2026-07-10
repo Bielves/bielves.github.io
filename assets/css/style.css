@@ -1,0 +1,1502 @@
+  :root{
+    --ink:#1a1a1a;
+    --paper:#f0ede6;
+    --line:#1a1a1a;
+    --border-color: rgba(26,26,26,0.16);
+    --modal-border: rgba(26,26,26,0.32);
+    --accent:#b8452f;
+    --muted:#7a7568;
+    --panel:#ffffff;
+    --star:#c99a2e;
+    --paypal:#1b3e94;
+    --pix:#2ea56f;
+  }
+  body.dark{
+    --ink:#eef2f1;
+    --paper:#15181b;
+    --line:#eef2f1;
+    --border-color: rgba(238,242,241,0.14);
+    --modal-border: rgba(238,242,241,0.28);
+    --accent:#3aa88f;
+    --muted:#93a3a0;
+    --panel:#1d2225;
+    --star:#e0b84a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    transition:background 0.25s ease, color 0.25s ease;
+  }
+  a{color:inherit;}
+
+  /* ---------- SCROLLBAR ---------- */
+  /* Firefox: thin + theme-matched track/thumb, applied globally */
+  html{
+    scrollbar-width:thin;
+    scrollbar-color:var(--border-color) transparent;
+  }
+  /* Webkit (Chrome/Safari/Edge): slim custom scrollbar, subtle by default,
+     only becomes visible/accent-colored on hover so it stops competing
+     for attention with the page content. Applies to the page and any
+     scrollable element (modals, textareas, etc) since they all inherit
+     from the same rule set. */
+  ::-webkit-scrollbar{
+    width:8px;
+    height:8px;
+  }
+  ::-webkit-scrollbar-track{
+    background:transparent;
+  }
+  ::-webkit-scrollbar-thumb{
+    background:var(--border-color);
+    border-radius:8px;
+    border:2px solid transparent;
+    background-clip:padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover{
+    background:var(--accent);
+    background-clip:padding-box;
+  }
+  ::-webkit-scrollbar-corner{
+    background:transparent;
+  }
+
+  /* ---------- HEADER / HERO ---------- */
+  .top-wrap{
+    position:fixed;
+    top:0; left:0; right:0;
+    z-index:50;
+    transition:transform 0.35s ease;
+  }
+  .top-wrap.hide-hero{
+    transform:translateY(calc(-1 * var(--hero-h, 260px)));
+  }
+  .hero{
+    height:260px;
+    position:relative;
+    background:var(--panel);
+    background-size:cover;
+    background-position:center;
+    display:flex;
+    align-items:flex-end;
+    overflow:hidden;
+    border-bottom:3px solid var(--border-color);
+  }
+  .hero::after{
+    content:"Background art";
+    position:absolute;
+    top:14px; left:20px;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.72rem;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--muted);
+  }
+  .hero.has-image::after{ content:none; }
+  .lang-toggle{
+    position:absolute;
+    top:12px; right:20px;
+    display:flex;
+    gap:6px;
+  }
+  .lang-btn{
+    width:34px; height:34px;
+    border-radius:50%;
+    border:2px solid var(--border-color);
+    background:rgba(240,237,230,0.9);
+    font-size:1.1rem;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    padding:0;
+    overflow:hidden;
+  }
+  .lang-btn img{
+    width:100%; height:100%;
+    object-fit:cover;
+    display:block;
+    pointer-events:none;
+  }
+  .lang-btn.active{
+    border-color:var(--accent);
+    box-shadow:0 0 0 2px var(--accent);
+  }
+  .theme-divider{
+    width:2px;
+    background:var(--ink);
+    opacity:0.25;
+    margin:2px 2px;
+  }
+  .theme-btn{
+    width:34px; height:34px;
+    border-radius:50%;
+    border:2px solid var(--border-color);
+    background:rgba(240,237,230,0.9);
+    font-size:1rem;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    padding:0;
+  }
+  .theme-btn:hover{border-color:var(--accent);}
+  .hero-inner{
+    position:relative;
+    width:100%;
+    max-width:920px;
+    margin:0 auto;
+    padding:0 20px 18px;
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:16px;
+  }
+  .artist-block{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    position:relative;
+  }
+  /* Slow-rotating gradient ring around the avatar. Uses the classic
+     "padding as border" trick: the outer wrapper's background is the
+     spinning gradient, and its padding reveals a thin ring of it around
+     the inner avatar circle. No masking involved, so it can't silently
+     fail and hide the photo — worst case on an old browser is just no
+     ring, the avatar itself is unaffected either way. */
+  .avatar-ring{
+    width:132px; height:132px;
+    border-radius:50%;
+    padding:3px;
+    flex-shrink:0;
+    background:conic-gradient(from 0deg, var(--accent), transparent 35%, transparent 65%, var(--accent));
+    animation:avatarRingSpin 7s linear infinite, avatarRingPulse 3s ease-in-out infinite;
+  }
+  .avatar{
+    width:100%; height:100%;
+    border-radius:50%;
+    background:var(--panel);
+    background-size:cover;
+    background-position:center;
+    border:2px solid var(--border-color);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.65rem;
+    color:var(--muted);
+    text-align:center;
+    flex-shrink:0;
+    position:relative;
+  }
+  @keyframes avatarRingSpin{
+    to{ transform:rotate(360deg); }
+  }
+  /* Subtle breathing effect — opacity only (rotation handles transform
+     separately above), so the two animations run independently without
+     fighting over the same CSS property. Kept gentle: never fully fades,
+     just softly dims and brightens. */
+  @keyframes avatarRingPulse{
+    0%, 100%{ opacity:1; }
+    50%{ opacity:0.6; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .avatar-ring{ animation:none; }
+  }
+  .speech-bubble{
+    position:absolute;
+    bottom:calc(100% + 10px);
+    left:-6px;
+    min-width:160px;
+    max-width:220px;
+    background:var(--panel);
+    border:2px solid var(--border-color);
+    border-radius:14px;
+    padding:10px 14px;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.78rem;
+    line-height:1.4;
+    color:var(--ink);
+    opacity:0;
+    transform:translateY(6px);
+    pointer-events:none;
+    transition:opacity 0.25s ease, transform 0.25s ease;
+
+  }
+  .speech-bubble.show{
+    opacity:1;
+    transform:translateY(0);
+  }
+  .speech-bubble::after{
+    content:"";
+    position:absolute;
+    top:100%;
+    left:24px;
+    border:8px solid transparent;
+    border-top-color:var(--border-color);
+  }
+  .speech-bubble::before{
+    content:"";
+    position:absolute;
+    top:calc(100% - 3px);
+    left:26px;
+    border:6px solid transparent;
+    border-top-color:var(--panel);
+    z-index:1;
+  }
+  .artist-name{
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-weight:800;
+    font-size:1.3rem;
+    color:#ffffff;
+    display:inline-block;
+    background:rgba(0, 0, 0, 0.836);
+    padding:3px 8px;
+    border-radius:8px;
+  }
+  .artist-tag{
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.75rem;
+    color:#ffffff;
+    /*background:rgba(0,0,0,0.4);*/
+    background:rgba(0, 0, 0, 0.719);
+    padding:1px 8px;
+    display:inline-block;
+    margin-top:4px;
+    border-radius:8px;
+  }
+  .socials{
+    display:flex;
+    gap:8px;
+  }
+  .social-btn{
+    width:34px; height:34px;
+    border-radius:50%;
+    background:var(--ink);
+    color:var(--paper);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-weight:700;
+    font-size:0.75rem;
+    text-decoration:none;
+    flex-shrink:0;
+  }
+  .social-btn:hover{background:var(--accent);}
+  .social-btn i{font-size:0.95rem;}
+  .cara-badge{
+    width:15px; height:15px;
+    border-radius:4px;
+    background:var(--paper);
+    color:var(--ink);
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:800;
+    font-size:0.62rem;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+  }
+
+  nav{
+    display:flex;
+    gap:0;
+    border-bottom:3px solid var(--border-color);
+    background:var(--paper);
+  }
+  nav button{
+    flex:1;
+    padding:16px;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-weight:700;
+    font-size:0.85rem;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    background:none;
+    border:none;
+    border-right:2px solid var(--border-color);
+    cursor:pointer;
+    color:var(--ink);
+  }
+  nav button:last-child{border-right:none;}
+  nav button.active{
+    background:var(--ink);
+    color:var(--paper);
+  }
+
+  #pageContent{
+    padding-top:340px;
+  }
+  main{
+    max-width:920px;
+    margin:0 auto;
+    padding:40px 20px;
+  }
+  section{display:none;}
+  section.active{display:block;}
+  h1{
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-weight:800;
+    letter-spacing:-0.03em;
+    font-size:2rem;
+    margin:0 0 4px;
+  }
+  .sub{
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    color:var(--muted);
+    font-size:0.85rem;
+    margin:0 0 32px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+  }
+
+  /* ---------- COMMISSION CARDS ---------- */
+  
+  .card-list{
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+  }
+  .card{
+    background:var(--panel);
+    border:2px solid var(--border-color);
+    border-radius:20px;
+    overflow:hidden;
+    display:grid;
+    grid-template-columns: 220px 1fr;
+  }
+  @media (max-width:600px){
+    .card{grid-template-columns:1fr;}
+  }
+  .card-img{
+    background:var(--panel);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    color:var(--muted);
+    font-size:0.8rem;
+    text-align:center;
+    padding:10px;
+    border-right:2px solid var(--border-color);
+    cursor:pointer;
+    position:relative;
+    overflow:hidden;
+    background-size:cover;
+    background-position:center;
+  }
+  /* Crossfading style-preview layers — see startCardImageCycle() in the
+     script. Two stacked layers fade opacity in/out so switching between
+     style examples feels smooth instead of an abrupt image swap. */
+  .card-img-layer{
+    position:absolute;
+    inset:0;
+    background-size:cover;
+    background-position:center;
+    opacity:0;
+    transition:opacity 1.2s ease;
+  }
+  .card-img-layer.active{ opacity:1; }
+  /* Applied once a real photo loads successfully — see tryBgImage() in the
+     script. Hides the placeholder label text so only the photo shows. */
+  .card-img.has-image, .gallery-main.has-image, .gallery-thumb.has-image, .portfolio-item.has-image, .avatar.has-image{
+    color:transparent;
+    user-select:none;
+  }
+  .card-img:hover::before{
+    content:attr(data-hint);
+    position:absolute;
+    left:50%;
+    bottom:8px;
+    transform:translateX(-50%);
+    z-index:5;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.65rem;
+    background:var(--ink);
+    color:var(--paper);
+    padding:3px 10px;
+    border-radius:20px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.35);
+    pointer-events:none;
+    white-space:nowrap;
+  }
+  @media (max-width:600px){
+    .card-img{border-right:none;border-bottom:2px solid var(--border-color);min-height:140px;}
+  }
+  .card-body{
+    padding:20px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+  }
+  .card-title{
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-weight:800;
+    font-size:1.1rem;
+    margin:0 0 8px;
+  }
+  .card-desc{
+    font-size:0.9rem;
+    line-height:1.5;
+    color:var(--ink);
+    margin-bottom:12px;
+  }
+  .card-price{
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.75rem;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    color:var(--muted);
+  }
+  .card-price span{
+    font-weight:800;
+    font-size:1.3rem;
+    color:var(--accent);
+    margin-left:6px;
+  }
+
+  /* ---------- MODAL (shared) ---------- */
+  .modal-overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(26,26,26,0.75);
+    z-index:200;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+  }
+  .modal-overlay.active{display:flex;}
+  .modal-box{
+    background:var(--panel);
+    border:3px solid var(--modal-border);
+    border-radius:24px;
+    max-width:640px;
+    width:100%;
+    max-height:88vh;
+    overflow-y:auto;
+    position:relative;
+  }
+  .modal-close{
+    position:sticky;
+    top:0;
+    float:right;
+    width:36px; height:36px;
+    background:var(--ink);
+    color:var(--paper);
+    border:none;
+    border-radius:50%;
+    margin:10px 10px 0 0;
+    font-size:1.1rem;
+    cursor:pointer;
+    z-index:5;
+  }
+  .modal-close:hover{background:var(--accent);}
+  .modal-body{padding:28px;}
+
+  /* ---------- COMMISSION MODAL — vgen style two-column ---------- */
+  .commission-box{
+    max-width:920px;
+  }
+  .commission-layout{
+    display:grid;
+    grid-template-columns: 1.05fr 1fr;
+  }
+  @media (max-width:760px){
+    .commission-layout{grid-template-columns:1fr;}
+  }
+  .gallery-col{
+    border-right:2px solid var(--border-color);
+    padding:24px;
+  }
+  @media (max-width:760px){
+    .gallery-col{border-right:none; border-bottom:2px solid var(--border-color); padding-bottom:24px;}
+  }
+  .gallery-main{
+    aspect-ratio:4/5;
+    background:var(--panel);
+    background-size:cover;
+    background-position:center;
+    border-radius:16px;
+    border:2px solid var(--border-color);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    color:var(--muted);
+    font-size:0.85rem;
+    text-align:center;
+    padding:10px;
+  }
+  .gallery-thumbs-row{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    margin-top:10px;
+  }
+  .gallery-thumbs{
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:8px;
+    flex:1;
+    min-width:0;
+  }
+  .gallery-nav-btn{
+    flex-shrink:0;
+    width:26px; height:26px;
+    border-radius:50%;
+    border:2px solid var(--border-color);
+    background:var(--panel);
+    color:var(--ink);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    font-size:0.95rem;
+    line-height:1;
+    padding:0;
+  }
+  .gallery-nav-btn:hover:not(:disabled){
+    border-color:var(--accent);
+    color:var(--accent);
+  }
+  .gallery-nav-btn:disabled{
+    opacity:0.3;
+    cursor:default;
+  }
+  .gallery-nav-btn.hidden{
+    display:none;
+  }
+  .gallery-thumb{
+    aspect-ratio:1;
+    background:var(--panel);
+    background-size:cover;
+    background-position:center;
+    border-radius:10px;
+    border:2px solid var(--border-color);
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    color:var(--muted);
+    font-size:0.55rem;
+    text-align:center;
+    padding:3px;
+  }
+  .gallery-thumb.active{
+    border-color:var(--accent);
+    box-shadow:0 0 0 2px var(--accent);
+  }
+  .gallery-caption{
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.7rem;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    margin-top:10px;
+    text-align:center;
+  }
+
+  .config-col{
+    padding:24px;
+    padding-top:48px; /* clears the floating round close button, which overlaps this column's top edge */
+  }
+  .config-col h2{
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-weight:800;
+    margin:0 0 4px;
+  }
+  .config-col label{
+    display:block;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.72rem;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--muted);
+    margin:16px 0 6px;
+  }
+  select{
+    width:100%;
+    padding:10px 16px;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.9rem;
+    border:2px solid var(--border-color);
+    background:var(--panel);
+    color:var(--ink);
+    border-radius:999px;
+    cursor:pointer;
+  }
+  .toggle-row{
+    display:flex;
+    border:2px solid var(--border-color);
+    border-radius:999px;
+    overflow:hidden;
+  }
+  .toggle-row button{
+    flex:1;
+    padding:9px;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.82rem;
+    border:none;
+    background:var(--panel);
+    color:var(--ink);
+    cursor:pointer;
+  }
+  .toggle-row button.active{background:var(--ink); color:var(--paper);}
+  .toggle-row button:not(:last-child){border-right:2px solid var(--border-color);}
+  .modal-desc{
+    font-size:0.9rem;
+    line-height:1.55;
+    margin-top:14px;
+    padding:14px 16px;
+    background:var(--paper);
+    border:1px solid #ccc7b8;
+    border-radius:14px;
+  }
+  .modal-price-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-top:32px;
+    padding-top:20px;
+    border-top:2px solid var(--border-color);
+  }
+  .modal-price-label-group{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .currency-select-wrap{
+    position:relative;
+    display:inline-flex;
+    align-items:center;
+  }
+  .currency-select{
+    appearance:none;
+    -webkit-appearance:none;
+    -moz-appearance:none;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-weight:700;
+    font-size:0.7rem;
+    letter-spacing:0.04em;
+    color:var(--ink);
+    background:var(--panel);
+    border:1.5px solid var(--border-color);
+    border-radius:999px;
+    padding:4px 24px 4px 12px;
+    cursor:pointer;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .currency-select:hover{border-color:var(--accent);}
+  .currency-select:focus{outline:none; border-color:var(--accent);}
+  .currency-select-wrap::after{
+    content:'';
+    position:absolute;
+    right:10px;
+    top:50%;
+    width:6px; height:6px;
+    border-right:2px solid var(--muted);
+    border-bottom:2px solid var(--muted);
+    transform:translateY(-70%) rotate(45deg);
+    pointer-events:none;
+  }
+  .modal-price-value{
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-weight:800;
+    font-size:1.8rem;
+    color:var(--accent);
+  }
+
+  /* payment icons */
+  .pay-section{margin-top:18px;}
+  .pay-label{
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.72rem;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--muted);
+    margin-bottom:8px;
+  }
+  .pay-icons{
+    display:flex;
+    gap:10px;
+  }
+  .pay-chip{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    padding:8px 14px;
+    border-radius:999px;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-weight:700;
+    font-size:0.78rem;
+    color:#fff;
+  }
+  .pay-chip.paypal{background:var(--paypal);}
+  .pay-chip.pix{background:var(--pix);}
+  .pay-chip-icon{
+    width:16px; height:16px;
+    border-radius:50%;
+    background:rgba(255,255,255,0.85);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:0.6rem;
+    font-weight:900;
+    color:var(--ink);
+  }
+
+  /* TOS card */
+  .tos-card{
+    margin-top:22px;
+    background:var(--paper);
+    border:2px solid var(--border-color);
+    border-radius:18px;
+    padding:14px 16px;
+  }
+  .tos-card-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .tos-card-header h4{
+    margin:0;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-weight:800;
+    font-size:0.82rem;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+  }
+  .tos-expand-btn{
+    width:30px; height:30px;
+    flex-shrink:0;
+    border-radius:50%;
+    border:2px solid var(--border-color);
+    background:var(--panel);
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:0.85rem;
+  }
+  .tos-expand-btn:hover{background:var(--ink); color:var(--paper);}
+  .tos-expand-btn.open{transform:rotate(45deg);}
+  .tos-preview{
+    font-size:0.82rem;
+    line-height:1.5;
+    color:var(--muted);
+    margin-top:8px;
+  }
+  .tos-full{
+    display:none;
+    margin-top:12px;
+    padding-top:12px;
+    border-top:1px solid var(--border-color);
+    max-height:320px;
+    overflow-y:auto;
+    font-size:0.85rem;
+    line-height:1.6;
+  }
+  .tos-full.open{display:block;}
+  .tos-full p{margin:0 0 12px;}
+
+  .accept-row{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    margin-top:16px;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.85rem;
+  }
+  .accept-row input[type="checkbox"]{
+    width:18px; height:18px;
+    margin-top:2px;
+    accent-color:var(--ink);
+    cursor:pointer;
+    flex-shrink:0;
+  }
+
+  .cta-big{
+    display:block;
+    width:100%;
+    margin-top:16px;
+    padding:14px;
+    background:var(--ink);
+    color:var(--paper);
+    text-align:center;
+    text-decoration:none;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-weight:700;
+    font-size:0.9rem;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    border:none;
+    border-radius:999px;
+    cursor:pointer;
+    transition:background 0.15s;
+  }
+  .cta-big:not(.disabled):hover{background:var(--accent);}
+  .cta-big.disabled{
+    opacity:0.45;
+    cursor:not-allowed;
+  }
+  .accept-warning{
+    display:none;
+    margin-top:10px;
+    padding:10px 14px;
+    background:#f6e6c8;
+    border:1px solid #cba43e;
+    border-radius:12px;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.8rem;
+    color:#6b4f10;
+  }
+  .commission-slots{
+    display:inline-block;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:1rem;
+    font-weight:700;
+    letter-spacing:0.02em;
+    color:#ffffff;
+    background:rgba(0, 0, 0, 0.925);
+    padding:2px 9px;
+    border-radius:999px;
+    margin-bottom:4px;
+  }
+  .modal-slots-status{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin:14px 0 0;
+    padding:9px 14px;
+    border-radius:12px;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.82rem;
+    font-weight:700;
+    background:rgba(63,198,180,0.14);
+    color:var(--ink);
+  }
+  .modal-slots-status.closed{
+    background:rgba(200,70,60,0.14);
+  }
+  .modal-slots-status .dot{
+    width:8px; height:8px;
+    border-radius:50%;
+    background:var(--accent);
+    flex-shrink:0;
+  }
+  .modal-slots-status.closed .dot{
+    background:#c8463c;
+  }
+  .no-slots-box{
+    max-width:400px;
+    text-align:center;
+    padding:36px 30px;
+  }
+  .no-slots-icon{
+    font-size:2.4rem;
+    margin-bottom:12px;
+  }
+  .no-slots-box h3{
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:1.15rem;
+    margin:0 0 10px;
+    color:var(--ink);
+  }
+  .no-slots-box p{
+    font-size:0.9rem;
+    line-height:1.5;
+    color:var(--muted);
+    margin:0;
+  }
+  .accept-warning.show{display:block;}
+
+  /* ---------- COMMISSION REQUEST FORM ---------- */
+  .req-intro{
+    font-size:0.9rem;
+    line-height:1.55;
+    color:var(--muted);
+    margin:8px 0 20px;
+  }
+  .req-guest{
+    display:inline-block;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.72rem;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    background:var(--paper);
+    border:1px solid #ccc7b8;
+    border-radius:999px;
+    padding:4px 12px;
+    color:var(--muted);
+    margin-bottom:18px;
+  }
+  .req-input{
+    width:100%;
+    padding:10px 14px;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.9rem;
+    border:2px solid var(--border-color);
+    background:var(--panel);
+    color:var(--ink);
+    border-radius:12px;
+  }
+  .req-field-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-top:6px;
+  }
+  .req-field-row .req-input{margin-top:0;}
+  .req-input-inline{flex:1;}
+  .req-prefix{
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.82rem;
+    color:var(--muted);
+    white-space:nowrap;
+  }
+  .req-tag{
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.65rem;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    padding:3px 9px;
+    border-radius:999px;
+    white-space:nowrap;
+    flex-shrink:0;
+  }
+  .req-tag-required{background:#f3d9d1; color:var(--accent);}
+  .req-tag-optional{background:var(--paper); color:var(--muted); border:1px solid #ccc7b8;}
+  .req-verify-note{
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.72rem;
+    color:var(--muted);
+    margin-top:4px;
+  }
+  .req-verify-btn{
+    margin-top:8px;
+    padding:8px 16px;
+    background:var(--panel);
+    color:var(--ink);
+    border:2px solid var(--border-color);
+    border-radius:10px;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-weight:700;
+    font-size:0.78rem;
+    cursor:pointer;
+  }
+  .req-verify-btn:hover{border-color:var(--accent); color:var(--accent);}
+  .req-verify-result{
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.78rem;
+    margin-top:6px;
+    display:none;
+  }
+  .req-verify-result.show{display:block;}
+  .req-verify-result.valid{color:#2ea56f;}
+  .req-verify-result.invalid{color:var(--accent);}
+  .req-section{
+    margin-top:26px;
+    padding-top:22px;
+    border-top:2px solid var(--border-color);
+  }
+  .req-section:first-of-type{
+    margin-top:22px;
+  }
+  .req-section-title{
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-weight:700;
+    font-size:1rem;
+    color:var(--ink);
+    margin:0 0 12px;
+  }
+  .req-help{
+    font-size:0.8rem;
+    color:var(--muted);
+    line-height:1.5;
+    margin:2px 0 8px;
+  }
+  .req-brief-btn{
+    width:100%;
+    padding:12px;
+    background:var(--panel);
+    color:var(--ink);
+    border:2px dashed var(--border-color);
+    border-radius:14px;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-weight:700;
+    font-size:0.85rem;
+    cursor:pointer;
+  }
+  .req-brief-btn:hover{border-color:var(--accent); color:var(--accent);}
+  .req-textarea{
+    resize:vertical;
+    min-height:110px;
+    line-height:1.5;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+  }
+  .req-word-counter{
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.72rem;
+    color:var(--muted);
+    text-align:right;
+    margin-top:4px;
+  }
+  .req-word-counter.over-limit{color:var(--accent); font-weight:700;}
+  /* Confirmation pop-up shown after a successful submission — reuses the
+     no-slots-box visual language for consistency. */
+  .confirm-box{
+    text-align:center;
+    padding:40px 30px;
+  }
+  .confirm-icon{font-size:2.6rem; margin-bottom:12px;}
+  .confirm-box h3{margin:0 0 10px; font-family:'Ubuntu', -apple-system, sans-serif;}
+  .confirm-box p{margin:0 0 22px; color:var(--muted); font-size:0.9rem; line-height:1.5;}
+  .req-price-box{
+    margin-top:24px;
+    padding:16px 18px;
+    background:var(--paper);
+    border:2px solid var(--border-color);
+    border-radius:16px;
+  }
+  .req-price-label{
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.72rem;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--muted);
+  }
+  .req-price-service{
+    font-size:0.85rem;
+    color:var(--ink);
+    margin:4px 0 8px;
+  }
+  .req-price-value{
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-weight:800;
+    font-size:1.6rem;
+    color:var(--accent);
+  }
+  .req-price-disclaimer{
+    font-size:0.75rem;
+    color:var(--muted);
+    line-height:1.5;
+    margin-top:8px;
+  }
+  .req-agree{
+    font-size:0.8rem;
+    color:var(--muted);
+    line-height:1.5;
+    margin-top:16px;
+  }
+  .req-agree a{
+    color:var(--accent);
+    text-decoration:underline;
+    cursor:pointer;
+  }
+  .req-submitted{
+    display:none;
+    margin-top:12px;
+    padding:12px 14px;
+    background:#dcefe0;
+    border:1px solid #6fae7f;
+    border-radius:12px;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.82rem;
+    color:#295c37;
+  }
+  .req-submitted.show{display:block;}
+  .req-submitted.error{
+    background:#f6e0dc;
+    border:1px solid #c97a63;
+    color:#7a3220;
+  }
+  .req-submitted.sending{
+    background:var(--paper);
+    border:1px solid var(--border-color);
+    color:var(--muted);
+  }
+  /* Duplicate-submission warning — sits right above the Submit Request
+     button, since that's the action it's actually blocking. */
+  .req-submit-warning{
+    display:none;
+    margin:0 0 12px;
+    padding:12px 14px;
+    background:#f6e0dc;
+    border:1px solid #c97a63;
+    border-radius:12px;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.82rem;
+    color:#7a3220;
+  }
+  .req-submit-warning.show{display:block;}
+
+  /* ---------- PORTFOLIO ---------- */
+  .portfolio-tabs{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin:4px 0 18px;
+  }
+  .portfolio-tab{
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.8rem;
+    font-weight:600;
+    padding:8px 16px;
+    border-radius:999px;
+    border:2px solid var(--border-color);
+    background:transparent;
+    color:var(--ink);
+    cursor:pointer;
+    transition:background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  }
+  .portfolio-tab:hover{border-color:var(--accent);}
+  .portfolio-tab.active{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:#fff;
+  }
+
+  .portfolio-grid{
+    column-count:4;
+    column-gap:2px;
+  }
+  @media (max-width:700px){ .portfolio-grid{column-count:3;} }
+  @media (max-width:460px){ .portfolio-grid{column-count:2;} }
+
+  /* Each item's box height comes from its own <img> at its natural aspect
+     ratio (width:100%, height:auto) — no fixed/random heights, so the grid
+     genuinely reflows around whatever format each uploaded jpg happens to
+     be, portrait or landscape or square alike. */
+  .portfolio-item{
+    position:relative;
+    break-inside:avoid;
+    margin-bottom:2px;
+    line-height:0;
+    cursor:pointer;
+    overflow:hidden;
+  }
+  .portfolio-item:hover{outline:3px solid var(--accent); outline-offset:-3px;}
+  .portfolio-img{
+    display:block;
+    width:100%;
+    height:auto;
+    transition:transform 0.35s ease;
+  }
+  .portfolio-item:hover .portfolio-img{transform:scale(1.035);}
+
+  /* Invisible strip over the lower part of the thumbnail — hovering it
+     (not the whole image) is what reveals the caption below. */
+  .portfolio-hotzone{
+    position:absolute;
+    left:0; right:0; bottom:0;
+    height:38%;
+  }
+  /* Caption always renders in white/black-on-white regardless of the
+     site's light/dark theme, since it always sits over a photo. */
+  .portfolio-caption{
+    position:absolute;
+    left:0; right:0; bottom:0;
+    padding:14px 12px 10px;
+    background:rgba(0,0,0,0.6);
+    opacity:0;
+    transform:translateY(6px);
+    transition:opacity 0.2s ease, transform 0.2s ease;
+    pointer-events:none;
+  }
+  .portfolio-hotzone:hover ~ .portfolio-caption{
+    opacity:1;
+    transform:translateY(0);
+  }
+  .portfolio-caption h4{
+    margin:0 0 4px;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.82rem;
+    font-weight:700;
+    line-height:1.3;
+    color:#fff;
+  }
+  .portfolio-caption p{
+    margin:0;
+    font-size:0.72rem;
+    line-height:1.4;
+    color:#f2f2f2;
+  }
+
+  .lightbox-box{
+    width:auto;
+    max-width:96vw;
+    max-height:92vh;
+    overflow:hidden; /* the box is sized exactly to the image — nothing to scroll */
+  }
+  .lightbox-close{
+    position:absolute;
+    top:10px; right:10px;
+    float:none;
+    opacity:0.35;
+    transition:opacity 0.2s ease, background 0.2s ease;
+  }
+  .lightbox-close:hover{opacity:1;}
+
+  .lightbox-wrap{
+    position:relative;
+    width:100%;
+    min-height:240px; /* placeholder box while natural size is still loading */
+    background:var(--paper);
+    overflow:hidden; /* clips panning while zoomed in */
+    border-bottom:2px solid var(--border-color);
+  }
+  .lightbox-spinner{
+    position:absolute;
+    top:50%; left:50%;
+    width:34px; height:34px;
+    margin:-17px 0 0 -17px;
+    border:3px solid var(--border-color);
+    border-top-color:var(--accent);
+    border-radius:50%;
+    animation:lightbox-spin 0.8s linear infinite;
+  }
+  .lightbox-spinner.hidden{display:none;}
+  @keyframes lightbox-spin{
+    to{transform:rotate(360deg);}
+  }
+  .lightbox-photo{
+    display:block;
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    opacity:0;
+    cursor:zoom-in;
+    transition:opacity 0.3s ease, transform 0.15s ease;
+    user-select:none;
+    -webkit-user-drag:none;
+  }
+  .lightbox-photo.loaded{opacity:1;}
+  /* Transform (scale + pan translate) is applied inline by the script so
+     dragging can move the image freely — see fitLightboxToImage() /
+     applyPan() in the script. */
+  .lightbox-photo.zoomed{cursor:grab;}
+  .lightbox-photo.zoomed.dragging{
+    cursor:grabbing;
+    transition:none;
+  }
+  .lightbox-nav-btn{
+    position:absolute;
+    top:50%;
+    transform:translateY(-50%);
+    width:38px; height:38px;
+    border-radius:50%;
+    border:none;
+    background:rgba(26,26,26,0.55);
+    color:#fff;
+    font-size:1.3rem;
+    line-height:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+  }
+  .lightbox-nav-btn:hover{background:var(--accent);}
+  .lightbox-nav-btn.prev{left:10px;}
+  .lightbox-nav-btn.next{right:10px;}
+
+  .lightbox-desc{
+    padding:20px;
+    font-size:0.9rem;
+    line-height:1.55;
+  }
+  .lightbox-desc h3{
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    margin:0 0 8px;
+  }
+
+  /* ---------- REVIEWS ---------- */
+  .review-card{
+    background:var(--panel);
+    border:2px solid var(--border-color);
+    border-radius:18px;
+    padding:20px;
+    margin-bottom:16px;
+  }
+  .review-top{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-bottom:12px;
+  }
+  .review-avatar{
+    width:42px; height:42px;
+    border-radius:50%;
+    background:var(--paper);
+    border:2px solid var(--border-color);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.55rem;
+    color:var(--muted);
+    text-align:center;
+    flex-shrink:0;
+  }
+  .review-name-stars{
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+  }
+  .review-name{
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-weight:700;
+    font-size:0.85rem;
+  }
+  .stars{
+    color:var(--star);
+    font-size:1.3rem;
+    letter-spacing:3px;
+    line-height:1;
+  }
+  .review-text{
+    font-size:0.92rem;
+    line-height:1.5;
+  }
+
+  /* ---------- FOOTER ---------- */
+  /* Reuses the exact same hero image (set via JS, see tryBgImage(footerBg,
+     IMG_PATHS.hero()) in main.js) instead of a copy — so the header and
+     footer really are the same picture, just cropped to different edges
+     of it: .hero shows around its center, this shows its bottom.
+     Layer order (each an absolutely-positioned sibling, painted in DOM
+     order — see z-index-free stacking notes below):
+       1. .footer-bg   — the image itself, background-attachment:fixed so
+                          it scrolls slower than the page content over it
+                          (the classic CSS parallax trick) for a bit of
+                          depth/movement as the footer comes into view.
+       2. .footer-blur — blurs whatever's rendered behind it (the image)
+                          via backdrop-filter. Deliberately a separate
+                          element from .footer-bg: putting `filter` on the
+                          SAME element as background-attachment:fixed
+                          breaks the fixed attachment in most browsers
+                          (filter/transform make an element establish its
+                          own containing block), so the blur lives here
+                          instead, on a sibling, which doesn't have that
+                          side effect.
+       3. .footer-tint — a flat wash of the current accent color, blended
+                          with mix-blend-mode so it tints the image like a
+                          Photoshop color-overlay layer. Uses var(--accent)
+                          so it's automatically the greenish-blue accent in
+                          dark mode and the orange accent in light mode.
+       4. .footer-inner — the actual links, sitting on top undistorted. */
+  footer{
+    position:relative;
+    overflow:hidden;
+    width:100%;
+    margin-top:40px;
+    border-top:3px solid var(--border-color);
+  }
+  .footer-bg{
+    position:absolute;
+    inset:-20px; /* bleeds past the footer's own edges so the blur (below) never reveals a hard/transparent border */
+    background:var(--panel); /* flat fallback until the hero image is found — same placeholder look as .hero */
+    background-size:cover;
+    background-position:center bottom;
+    background-attachment:fixed;
+    opacity:0.8;
+  }
+  .footer-blur{
+    position:absolute;
+    inset:-20px;
+    backdrop-filter:blur(5px);
+    -webkit-backdrop-filter:blur(5px);
+  }
+  .footer-tint{
+    position:absolute;
+    inset:0;
+    background:var(--accent);
+    mix-blend-mode:color;
+    opacity:0.5;
+    pointer-events:none;
+    transition:background 0.2s ease;
+  }
+  .footer-inner{
+    position:relative;
+    max-width:920px;
+    margin:0 auto;
+    padding:30px 20px 60px;
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:10px;
+  }
+  .footer-link{
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.72rem;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:#f0ede6;
+    background:rgba(26,26,26,0.72);
+    padding:7px 14px;
+    border-radius:20px;
+    text-decoration:none;
+    transition:background 0.2s ease;
+  }
+  .footer-link:hover{background:var(--accent);}
+
+  /* ---------- MOBILE POLISH ---------- */
+  @media (max-width:640px){
+    .hero{height:auto; min-height:220px; padding-top:54px;}
+    .hero-inner{
+      flex-wrap:wrap;
+      align-items:flex-start;
+      gap:12px;
+      padding-bottom:14px;
+    }
+    .artist-block{flex:1 1 100%;}
+    .socials{flex:1 1 100%;}
+    .lang-toggle{top:10px; right:12px;}
+    .lang-btn, .theme-btn{width:30px; height:30px; font-size:0.95rem;}
+    .avatar-ring{width:56px; height:56px; padding:2px;}
+    .artist-name{font-size:1.1rem;}
+    .speech-bubble{max-width:180px; font-size:0.72rem;}
+    nav button{padding:12px 6px; font-size:0.72rem;}
+
+    .modal-body{padding:18px;}
+    .config-col{padding:18px; padding-top:44px;}
+    .gallery-col{padding:16px;}
+
+    .req-field-row{flex-wrap:wrap;}
+    .req-tag{margin-top:4px;}
+
+    .pay-icons{flex-wrap:wrap;}
+
+    h1{font-size:1.6rem;}
+  }
+  @media (max-width:380px){
+    .gallery-thumbs{grid-template-columns:repeat(3, 1fr);}
+    .card-title{font-size:1rem;}
+    .modal-price-value{font-size:1.5rem;}
+    .modal-price-row{flex-wrap:wrap; row-gap:10px;}
+  }
+
+/* ==================== IMAGE PROTECTION ====================
+   Pairs with the contextmenu/dragstart guard in main.js. This alone
+   isn't a real barrier (view-source/devtools always work), it just
+   removes the casual "long-press / drag to save" paths on both real
+   <img> tags and the background-image divs used for cards/gallery/hero. */
+img,
+.card-img,
+#galleryMain,
+.gallery-thumb,
+#avatarPlaceholder,
+#heroBanner,
+#footerBg{
+  -webkit-user-drag:none;
+  user-drag:none;
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-touch-callout:none; /* blocks the iOS long-press "save image" menu */
+}

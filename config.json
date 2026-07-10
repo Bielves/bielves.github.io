@@ -1,0 +1,8 @@
+{
+  "maxSlots": 5,
+  "activeLists": [
+    "Paid",
+    "Working",
+    "Revision"
+  ]
+}

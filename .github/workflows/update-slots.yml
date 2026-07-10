@@ -1,0 +1,51 @@
+name: Update slots
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'   # every 5 min, adjust as needed
+  workflow_dispatch:          # lets you trigger it manually from the Actions tab
+
+permissions:
+  contents: write
+  actions: write             # needed to trigger the Pages deploy workflow below
+
+jobs:
+  update-slots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run update-slots.mjs
+        env:
+          TRELLO_KEY: ${{ secrets.TRELLO_KEY }}
+          TRELLO_TOKEN: ${{ secrets.TRELLO_TOKEN }}
+          TRELLO_BOARD: ${{ secrets.TRELLO_BOARD }}
+        run: node .github/scripts/update-slots.mjs
+
+      - name: Commit slots.json if changed
+        id: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add slots.json
+          if git diff --staged --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "Update slots.json"
+            git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Commits made by github-actions[bot] with the default GITHUB_TOKEN do
+      # NOT trigger other workflows' `push` events (GitHub's anti-loop
+      # safeguard). static.yml won't auto-redeploy after the commit above,
+      # so we trigger it explicitly here, but only if slots.json actually changed.
+      - name: Trigger Pages deploy
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run static.yml
