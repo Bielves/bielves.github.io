@@ -2052,28 +2052,15 @@ function showLightboxItem(){
   lightboxTitle.textContent = p.title[LANG];
   lightboxText.textContent = p.desc[LANG];
 
-  // Blurred placeholder instead of a spinner: paints instantly (already
-  // inlined as a data URI, no network wait), gives the box its correct
-  // size (see fitLightboxToImage below), and gives the user an actual
-  // preview of what's loading instead of a generic "something's
-  // happening" indicator. The sharp photo crossfades on top of it once
-  // loaded — see .lightbox-photo.loaded in style.css — so there's no
-  // blank-to-image pop, just blur-to-sharp.
-  lightboxWrap.style.backgroundImage = p.placeholder ? `url("${p.placeholder}")` : '';
-  if(p.placeholder){
-    const probe = new Image();
-    probe.onload = () => fitLightboxToImage(probe.naturalWidth, probe.naturalHeight);
-    probe.src = p.placeholder;
-  }
-
   // Preload off-screen instead of assigning src to the visible img
-  // directly — same reasoning as showGalleryImage(). An <img> that's
-  // actively downloading gets Chrome's own native loading spinner drawn
-  // on it, which our opacity:0/CSS can't suppress since it's the
-  // browser's own affordance, not ours. Loading into a detached Image()
-  // first and only pointing the real element at an already-cached URL
-  // means the assignment is instant — nothing for the browser to show a
-  // spinner for.
+  // directly. An <img> that's actively downloading gets the browser's
+  // own native loading spinner drawn on it, which our opacity:0/CSS
+  // can't suppress since it's the browser's own affordance, not ours.
+  // Loading into a detached Image() first and only pointing the real
+  // element at an already-cached URL means the assignment is instant —
+  // nothing for the browser to show a spinner for. No reason to wait on
+  // this before opening the modal though — only the placeholder below
+  // gates that.
   const fullSrc = webpVariant(p.fullSrc); // already confirmed to exist during discovery
   const preloadFull = new Image();
   preloadFull.onload = () => {
@@ -2083,7 +2070,40 @@ function showLightboxItem(){
   };
   preloadFull.src = fullSrc;
 
-  portfolioModalOverlay.classList.add('active');
+  // Blurred placeholder instead of a spinner: paints instantly (already
+  // inlined as a data URI, no network wait), gives the box its correct
+  // size (see fitLightboxToImage below), and gives the user an actual
+  // preview of what's loading instead of a generic "something's
+  // happening" indicator. The sharp photo crossfades on top of it once
+  // loaded — see .lightbox-photo.loaded in style.css — so there's no
+  // blank-to-image pop, just blur-to-sharp.
+  //
+  // Previously the modal was revealed (.active added) immediately, before
+  // this placeholder had even finished decoding — decoding still happens
+  // on a later tick even for an inlined data URI, so for one frame the
+  // box sat at its CSS default shrink-to-fit width (a thin sliver, just
+  // wide enough for the close button) before snapping to the correct
+  // aspect-ratio-matched size a moment later. Holding off on revealing
+  // the modal until the placeholder's own onload fires — near-instant,
+  // since there's no network round-trip — means the box is already the
+  // right shape on the very first visible frame instead of visibly
+  // jumping into place.
+  function reveal(){
+    portfolioModalOverlay.classList.add('active');
+  }
+  if(p.placeholder){
+    const probe = new Image();
+    probe.onload = () => {
+      lightboxWrap.style.backgroundImage = `url("${p.placeholder}")`;
+      fitLightboxToImage(probe.naturalWidth, probe.naturalHeight);
+      reveal();
+    };
+    probe.onerror = reveal; // corrupt/missing placeholder — don't hang, just open plainly
+    probe.src = p.placeholder;
+  } else {
+    lightboxWrap.style.backgroundImage = '';
+    reveal();
+  }
 }
 
 // Sizes the lightbox box to exactly match the photo's own aspect ratio
