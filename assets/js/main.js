@@ -286,8 +286,7 @@ function startCardImageCycle(container, formatoKey){
   const finalKeys = Object.keys(DATA[formatoKey].finalizacoes);
   // Every possible (finalização, example number) combo this card could
   // show — the actual pool of files isn't known ahead of time (some may
-  // not have been uploaded yet), so each turn just gambles on one of
-  // these and moves on if it 404s.
+  // not have been uploaded yet), so we check all of them once up front.
   const allCombos = [];
   finalKeys.forEach(finalKey => {
     for(let n = 1; n <= EXAMPLES_PER_TIER; n++) allCombos.push({ finalKey, n });
@@ -297,6 +296,7 @@ function startCardImageCycle(container, formatoKey){
   let paused = false;
   let destroyed = false;
   let currentSrc = null;
+  let validCombos = null; // null = discovery still running; [] = confirmed nothing exists
   container.addEventListener('mouseenter', () => paused = true);
   container.addEventListener('mouseleave', () => paused = false);
 
@@ -305,54 +305,51 @@ function startCardImageCycle(container, formatoKey){
     cardCycleTimers.push(timerId);
   }
 
-  // Tries up to one full pass over every combo (in random order) looking
-  // for the first one that actually loads. Non-existent files fail near-
-  // instantly, so this doesn't introduce any real wait — it just skips them.
+  // Checks every combo exactly ONCE (via the shared, deduped probeCache —
+  // same cache discoverPortfolio() draws from, so files it has already
+  // checked aren't re-requested here) and keeps only the ones that
+  // actually exist. This replaces the old "keep re-trying every 4.5s
+  // forever" behavior: a card with nothing uploaded yet now does one
+  // cheap HEAD-request pass and then simply stays on its placeholder —
+  // it never asks again until the page is reloaded.
+  async function discoverValidCombos(){
+    const results = await Promise.all(
+      allCombos.map(combo => probeImage(IMG_PATHS.galleryExample(formatoKey, combo.finalKey, combo.n)))
+    );
+    validCombos = allCombos.filter((_, i) => results[i]);
+  }
+
   function turn(){
     if(destroyed) return;
     if(paused){ scheduleNextTurn(400); return; }
+    if(!validCombos || validCombos.length === 0) return; // nothing to cycle to — stop, don't reschedule
 
-    const shuffled = allCombos.slice().sort(() => Math.random() - 0.5);
-    let i = 0;
+    const shuffled = validCombos.slice().sort(() => Math.random() - 0.5);
+    const combo = shuffled.find(c => IMG_PATHS.galleryExample(formatoKey, c.finalKey, c.n) !== currentSrc) || shuffled[0];
+    const src = IMG_PATHS.galleryExample(formatoKey, combo.finalKey, combo.n);
 
-    function tryNext(){
-      if(destroyed) return;
-      if(i >= shuffled.length){
-        // Nothing loadable this pass (e.g. no images uploaded yet) —
-        // check again in a while instead of hammering the network.
-        scheduleNextTurn(CARD_CYCLE_INTERVAL_MS);
-        return;
-      }
-      const combo = shuffled[i++];
-      const src = IMG_PATHS.galleryExample(formatoKey, combo.finalKey, combo.n);
-      if(src === currentSrc){ tryNext(); return; } // skip repeating the image already on screen
-      const probe = new Image();
-      probe.onload = () => {
-        if(destroyed) return;
-        container.classList.add('has-image');
-        const showLayer = onA ? layerB : layerA;
-        const hideLayer = onA ? layerA : layerB;
-        showLayer.style.backgroundImage = `url("${src}")`;
-        showLayer.classList.add('active');
-        hideLayer.classList.remove('active');
-        onA = !onA;
-        currentSrc = src;
-        // Lets the click handler know which finalização tier AND which
-        // example number this particular image belongs to, so the config
-        // modal can auto-select that same tier + open with that same
-        // image already showing in the big display, instead of always
-        // resetting to image 1.
-        container.dataset.currentFinal = combo.finalKey;
-        container.dataset.currentImageN = combo.n;
-        scheduleNextTurn(CARD_CYCLE_INTERVAL_MS);
-      };
-      probe.onerror = tryNext;
-      probe.src = src;
-    }
-    tryNext();
+    container.classList.add('has-image');
+    const showLayer = onA ? layerB : layerA;
+    const hideLayer = onA ? layerA : layerB;
+    showLayer.style.backgroundImage = `url("${src}")`;
+    showLayer.classList.add('active');
+    hideLayer.classList.remove('active');
+    onA = !onA;
+    currentSrc = src;
+    // Lets the click handler know which finalização tier AND which
+    // example number this particular image belongs to, so the config
+    // modal can auto-select that same tier + open with that same
+    // image already showing in the big display, instead of always
+    // resetting to image 1.
+    container.dataset.currentFinal = combo.finalKey;
+    container.dataset.currentImageN = combo.n;
+    scheduleNextTurn(CARD_CYCLE_INTERVAL_MS);
   }
 
-  turn();
+  discoverValidCombos().then(() => {
+    if(destroyed) return;
+    turn();
+  });
   cardCycleDestroyers.push(() => { destroyed = true; });
 }
 // ==================== PRICING CONFIG (EDIT HERE) ====================
@@ -1562,13 +1559,21 @@ let lightboxIndex = 0;
 // what makes loading="lazy" on the actual grid <img> tags meaningful: the
 // browser only fetches image bytes for the rows near the viewport, instead
 // of every candidate file getting fully downloaded during discovery.
-async function probeImage(src){
-  try {
-    const res = await fetch(src, { method: 'HEAD', cache: 'no-store' });
-    return res.ok;
-  } catch {
-    return false;
-  }
+// Cache is keyed by URL and shared by EVERY feature that needs to know
+// "does this file exist" (portfolio discovery, gallery modal discovery,
+// card image cycler). Each URL is only ever HEAD-probed once per page
+// load, no matter how many features ask about it or how many times —
+// this is what stops the card cycler from re-probing the same missing
+// files forever (see startCardImageCycle above).
+const probeCache = new Map(); // src -> Promise<boolean>
+
+function probeImage(src){
+  if(probeCache.has(src)) return probeCache.get(src);
+  const promise = fetch(src, { method: 'HEAD', cache: 'no-store' })
+    .then(res => res.ok)
+    .catch(() => false);
+  probeCache.set(src, promise);
+  return promise;
 }
 
 // Probes numbered files 1.jpg, 2.jpg, ... via thumbSrcFn(n) / fullSrcFn(n)
