@@ -1391,13 +1391,24 @@
   .lightbox-nav-btn.next{right:10px;}
 
   .lightbox-desc{
-    padding:20px;
-    font-size:0.9rem;
-    line-height:1.55;
+    padding:22px 24px 28px;
+    font-size:0.95rem;
+    line-height:1.6;
+    max-height:30vh;
+    overflow-y:auto; /* own scroll for long captions instead of relying
+                         on the box's overflow:hidden, which would just
+                         clip the text with no way to read the rest */
   }
   .lightbox-desc h3{
     font-family:'Ubuntu', -apple-system, sans-serif;
-    margin:0 0 8px;
+    font-size:1.3rem;
+    font-weight:800;
+    color:var(--ink);
+    margin:0 0 10px;
+  }
+  .lightbox-desc p{
+    margin:0; /* kill the browser's default ~1em p margin — the h3's
+                 margin-bottom above is the only gap we want */
   }
 
   /* ---------- GALLERY MAIN IMAGE ZOOM (commission modal) ---------- */

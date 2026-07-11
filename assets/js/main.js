@@ -213,6 +213,13 @@ let LANG = 'en';
 //   images/hero/hero.jpg                                    — header background art
 //   images/reviews/<n>.jpg                                  — round avatar for the
 //     n-th reviewer in reviewsData (1-indexed, matches array order)
+//
+// Optional per-image captions: drop a `captions.md` file next to any of
+// the numbered folders above (images/portfolio/captions.md, or
+// images/commissions/gallery/<formatoKey>/<finalKey>/captions.md) to give
+// individual images their own title/description instead of the generated
+// "Piece N" title or the shared category description. See the
+// PORTFOLIO CAPTIONS section further down for the exact file format.
 const IMG_BASE = 'images/';
 const IMG_PATHS = {
   galleryExample: (formatoKey, finalKey, n) => `${IMG_BASE}commissions/gallery/${formatoKey}/${finalKey}/${n}.jpg`,
@@ -230,7 +237,9 @@ const IMG_PATHS = {
   // index (1-based) — images/reviews/1.jpg is reviewsData[0]'s avatar, etc.
   // Falls back to the placeholder circle automatically if missing, same
   // pattern as every other tryBgImage() spot on the site.
-  reviewAvatar:   (n) => `${IMG_BASE}reviews/${n}.jpg`
+  reviewAvatar:   (n) => `${IMG_BASE}reviews/${n}.jpg`,
+  portfolioCaptions: () => `${IMG_BASE}portfolio/captions.md`,
+  galleryCaptions: (formatoKey, finalKey) => `${IMG_BASE}commissions/gallery/${formatoKey}/${finalKey}/captions.md`
 };
 const CARD_CYCLE_INTERVAL_MS = 4500; // dwell time per image before crossfading
 const CARD_CYCLE_FADE_MS = 1200;     // crossfade duration — kept slow/gentle on purpose
@@ -1783,25 +1792,122 @@ async function probeNumberedFolder(thumbSrcFn, fullSrcFn, maxN, makeMeta){
   return items;
 }
 
+// ==================== PORTFOLIO CAPTIONS (captions.md) ====================
+// Optional per-image title/description override that lives right next to
+// the images it describes, e.g. images/portfolio/captions.md or
+// images/commissions/gallery/<formatoKey>/<finalKey>/captions.md.
+//
+// Format — one block per image, keyed by its filename number:
+//
+//   [1]
+//   TITLE_PT: Guerreira em armadura
+//   TITLE_EN: Warrior in armor
+//   DESC_PT: Peça feita para um cliente, focando em armadura pesada
+//     e composição dinâmica.
+//   DESC_EN: Commission piece for a client, focusing on heavy armor
+//     and dynamic composition.
+//
+//   [2]
+//   TITLE_EN: Dragon knight
+//   DESC_EN: Full-body render, cell-shaded.
+//
+// Rules:
+//   - [n] opens the block for <n>.jpg. Everything after it belongs to
+//     that image until the next [n] header.
+//   - Each field is "KEY: value". A value can wrap onto extra lines —
+//     it keeps growing until the next KEY:, the next [n], or a blank
+//     line, so you don't need to cram long descriptions onto one line.
+//   - Any field can be skipped. TITLE_PT/TITLE_EN/DESC_PT/DESC_EN are
+//     independent — e.g. you can set only DESC_EN and leave the rest
+//     to fall back automatically.
+//   - Missing file, missing [n] block, or missing individual field ->
+//     falls back to the generated title ("Piece N") / shared category
+//     description exactly as before, so this is purely additive and
+//     nothing breaks while captions are filled in gradually.
+const CAPTION_KEYS = ['TITLE_PT', 'TITLE_EN', 'DESC_PT', 'DESC_EN'];
+
+function parseCaptionsMd(text){
+  const result = {}; // "n" -> { TITLE_PT, TITLE_EN, DESC_PT, DESC_EN }
+  let currentN = null;
+  let currentKey = null;
+  text.split('\n').forEach((raw) => {
+    const line = raw.replace(/\r$/, '');
+    const headerMatch = line.match(/^\s*\[(\d+)\]\s*$/);
+    if(headerMatch){
+      currentN = headerMatch[1];
+      currentKey = null;
+      if(!result[currentN]) result[currentN] = {};
+      return;
+    }
+    if(line.trim() === ''){
+      currentKey = null;
+      return;
+    }
+    const keyMatch = line.match(/^([A-Z_]+):\s?(.*)$/);
+    if(keyMatch && CAPTION_KEYS.includes(keyMatch[1]) && currentN !== null){
+      currentKey = keyMatch[1];
+      result[currentN][currentKey] = keyMatch[2];
+      return;
+    }
+    if(currentKey && currentN !== null){
+      result[currentN][currentKey] += ' ' + line.trim();
+    }
+  });
+  return result;
+}
+
+// Fetches and parses a captions.md file; resolves to {} (no overrides) if
+// the file doesn't exist or fails to load, so callers never need to
+// special-case a missing file.
+function fetchCaptions(url){
+  return fetch(url, { cache: 'no-store' })
+    .then(res => res.ok ? res.text() : '')
+    .then(parseCaptionsMd)
+    .catch(() => ({}));
+}
+
+// Builds the final { title, desc } (each { pt, en } ) for image n,
+// preferring a captions.md entry when present and falling back field by
+// field to the given defaults otherwise.
+function resolveCaption(captions, n, fallbackTitle, fallbackDesc){
+  const entry = captions[String(n)];
+  if(!entry) return { title: fallbackTitle, desc: fallbackDesc };
+  return {
+    title: {
+      pt: entry.TITLE_PT || fallbackTitle.pt,
+      en: entry.TITLE_EN || fallbackTitle.en
+    },
+    desc: {
+      pt: entry.DESC_PT || fallbackDesc.pt,
+      en: entry.DESC_EN || fallbackDesc.en
+    }
+  };
+}
+
 async function discoverPortfolio(){
   // 1) Manually-curated set — always leads the ALL tab, in file order.
   // Untagged (category: null), so these never show under a category tab.
-  const manualPromise = probeNumberedFolder(
-    IMG_PATHS.portfolioImage,
-    IMG_PATHS.portfolioImage,
-    PORTFOLIO_MAX,
-    (n) => ({
-      category: null,
-      title: { pt: `Trabalho ${n}`, en: `Piece ${n}` },
-      desc: PLACEHOLDER_DESC
-    })
+  // captions.md (if present) is fetched alongside the numbered probes and
+  // overrides the generated "Piece N" title / placeholder desc per image.
+  const manualPromise = fetchCaptions(IMG_PATHS.portfolioCaptions()).then((captions) =>
+    probeNumberedFolder(
+      IMG_PATHS.portfolioImage,
+      IMG_PATHS.portfolioImage,
+      PORTFOLIO_MAX,
+      (n) => ({
+        category: null,
+        ...resolveCaption(captions, n, { pt: `Trabalho ${n}`, en: `Piece ${n}` }, PLACEHOLDER_DESC)
+      })
+    )
   );
 
   // 2) Auto-pull every commission gallery image into its matching tab —
   // reuses images already uploaded for the commission menu, no re-upload.
   // This is the only source that feeds the category tabs. Kicked off
   // alongside (1) above rather than after it, so the manual set doesn't
-  // block the gallery probes (or vice versa) from starting.
+  // block the gallery probes (or vice versa) from starting. Each folder's
+  // captions.md (if present) overrides the shared format label / finalização
+  // desc on a per-image basis.
   const galleryProbes = [];
   Object.keys(DATA).forEach((formatoKey) => {
     const finalizacoes = DATA[formatoKey].finalizacoes || {};
@@ -1812,14 +1918,14 @@ async function discoverPortfolio(){
   });
   const galleryResultsPromise = Promise.all(galleryProbes.map(async ({ formatoKey, finalKey, cat }) => {
     const finalDesc = (DATA[formatoKey].finalizacoes[finalKey] || {}).desc || PLACEHOLDER_DESC;
+    const captions = await fetchCaptions(IMG_PATHS.galleryCaptions(formatoKey, finalKey));
     const items = await probeNumberedFolder(
       (n) => IMG_PATHS.galleryExample(formatoKey, finalKey, n),
       (n) => IMG_PATHS.galleryExample(formatoKey, finalKey, n),
       GALLERY_PER_TIER_MAX,
-      () => ({
+      (n) => ({
         category: cat,
-        title: DATA[formatoKey].label,
-        desc: finalDesc
+        ...resolveCaption(captions, n, DATA[formatoKey].label, finalDesc)
       })
     );
     return { cat, items };
@@ -1918,6 +2024,8 @@ function renderPortfolio(){
 // ==================== PORTFOLIO LIGHTBOX ====================
 const portfolioModalOverlay = document.getElementById('portfolioModalOverlay');
 const lightboxWrap = document.querySelector('.lightbox-wrap');
+const lightboxDesc = document.querySelector('.lightbox-desc');
+const lightboxBox = document.querySelector('.lightbox-box');
 const lightboxPhoto = document.getElementById('lightboxPhoto');
 const lightboxSpinner = document.getElementById('lightboxSpinner');
 const lightboxTitle = document.getElementById('lightboxTitle');
@@ -1957,19 +2065,37 @@ function showLightboxItem(){
 
 // Sizes the lightbox box to exactly match the photo's own aspect ratio
 // (clamped to the viewport) — landscape pieces open wide, square pieces
-// open square, and there's never a scrollbar since the box always hugs
-// the image.
+// open square. The caption's own height is measured first and subtracted
+// from the available height budget, so the image + title + description
+// always fit together within the viewport instead of the image alone
+// eating most of the height and pushing the caption to hug the bottom
+// edge (or get clipped by the box's overflow:hidden).
 function fitLightboxToImage(){
   const naturalW = lightboxPhoto.naturalWidth;
   const naturalH = lightboxPhoto.naturalHeight;
   if(!naturalW || !naturalH) return;
 
-  const maxW = Math.min(window.innerWidth * 0.92, 900);
-  const maxH = window.innerHeight * 0.8;
-  const scale = Math.min(maxW / naturalW, maxH / naturalH, 1);
+  // Title/text are already set by the time this runs (showLightboxItem
+  // sets them before the image's onload fires), so the desc block's real
+  // rendered height — including its own max-height/scroll clamp — is
+  // known here rather than guessed at.
+  const descH = lightboxDesc ? lightboxDesc.getBoundingClientRect().height : 0;
+  const CHROME = 24; // modal border + close button breathing room
 
-  lightboxWrap.style.width = Math.floor(naturalW * scale) + 'px';
+  const maxW = Math.min(window.innerWidth * 0.92, 900);
+  const maxH = Math.max(window.innerHeight * 0.8 - descH - CHROME, window.innerHeight * 0.35);
+  const scale = Math.min(maxW / naturalW, maxH / naturalH, 1);
+  const wrapWidth = Math.floor(naturalW * scale);
+
+  lightboxWrap.style.width = wrapWidth + 'px';
   lightboxWrap.style.height = Math.floor(naturalH * scale) + 'px';
+  // .lightbox-box is width:auto by default, which shrink-to-fits around
+  // its widest child — including the caption's own unwrapped text width.
+  // A long caption on a narrow/portrait image would otherwise pull the
+  // whole box wider than the photo, leaving a dead gap beside it. Pinning
+  // the box to the same width as the image forces the caption to wrap
+  // within that width instead.
+  if(lightboxBox) lightboxBox.style.width = wrapWidth + 'px';
 }
 window.addEventListener('resize', () => {
   if(portfolioModalOverlay.classList.contains('active')) fitLightboxToImage();
