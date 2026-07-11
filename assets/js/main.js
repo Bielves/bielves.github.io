@@ -1024,12 +1024,21 @@ let galleryDiscoveryToken = 0; // bumped every renderGallery() call so a slow/st
 function showGalleryImage(n){
   galleryActiveNumber = n;
   galleryMain.classList.remove('has-image');
+  galleryMainImg.classList.remove('loaded');
   galleryMainImg.removeAttribute('src');
+  // This element had no loading state at all before — just sat blank
+  // until the image popped in. Same placeholder-blur treatment as the
+  // portfolio lightbox now: instant paint, correct-feeling preview,
+  // crossfades to the sharp photo on load instead of appearing from
+  // nothing.
+  const ph = placeholderForGallery(IMAGE_PLACEHOLDERS, galleryFormatoKey, galleryFinalKeyForImages, n);
+  galleryMain.style.backgroundImage = ph ? `url("${ph}")` : '';
   const src = IMG_PATHS.galleryExample(galleryFormatoKey, galleryFinalKeyForImages, n);
   const preload = new Image();
   preload.onload = () => {
     galleryMainImg.src = webpVariant(src);
     galleryMain.classList.add('has-image');
+    galleryMainImg.classList.add('loaded');
   };
   preload.src = webpVariant(src);
   galleryThumbs.querySelectorAll('.gallery-thumb').forEach(th => {
@@ -1989,7 +1998,6 @@ const lightboxWrap = document.querySelector('.lightbox-wrap');
 const lightboxDesc = document.querySelector('.lightbox-desc');
 const lightboxBox = document.querySelector('.lightbox-box');
 const lightboxPhoto = document.getElementById('lightboxPhoto');
-const lightboxSpinner = document.getElementById('lightboxSpinner');
 const lightboxTitle = document.getElementById('lightboxTitle');
 const lightboxText = document.getElementById('lightboxText');
 
@@ -2011,20 +2019,17 @@ function showLightboxItem(){
 
   lightboxPhoto.classList.remove('loaded', 'zoomed', 'dragging');
   resetLightboxPan();
-  lightboxSpinner.classList.remove('hidden');
   lightboxTitle.textContent = p.title[LANG];
   lightboxText.textContent = p.desc[LANG];
 
-  // The box used to stay whatever size it last was (or a CSS default on
-  // first open) until the full-size photo finished downloading, then
-  // jump to the real aspect ratio the instant it loaded — a huge layout
-  // shift since the lightbox fills most of the viewport. The placeholder
-  // is already inlined as a base64 data URI (no network wait) and was
-  // generated at build time with the same aspect ratio as the source
-  // photo, so decoding it gives us the right box size basically
-  // instantly. The full photo's onload below still re-fits once it
-  // lands, but by then the box is already the right shape, so nothing
-  // visibly moves — that call is just a correction, not the first fit.
+  // Blurred placeholder instead of a spinner: paints instantly (already
+  // inlined as a data URI, no network wait), gives the box its correct
+  // size (see fitLightboxToImage below), and gives the user an actual
+  // preview of what's loading instead of a generic "something's
+  // happening" indicator. The sharp photo crossfades on top of it once
+  // loaded — see .lightbox-photo.loaded in style.css — so there's no
+  // blank-to-image pop, just blur-to-sharp.
+  lightboxWrap.style.backgroundImage = p.placeholder ? `url("${p.placeholder}")` : '';
   if(p.placeholder){
     const probe = new Image();
     probe.onload = () => fitLightboxToImage(probe.naturalWidth, probe.naturalHeight);
@@ -2032,7 +2037,6 @@ function showLightboxItem(){
   }
 
   lightboxPhoto.onload = () => {
-    lightboxSpinner.classList.add('hidden');
     lightboxPhoto.classList.add('loaded');
     fitLightboxToImage(lightboxPhoto.naturalWidth, lightboxPhoto.naturalHeight);
   };
