@@ -130,6 +130,35 @@ async function tryProcess(src, fn) {
   }
 }
 
+// How many images to process concurrently. Each job runs several Sharp
+// conversions internally (full + thumbs + placeholder), and Sharp/libvips
+// already uses its own internal thread pool per operation, so this caps
+// how many *images* are in flight at once rather than raw CPU threads —
+// keeps things fast on GitHub Actions' runners (2-4 vCPUs) without
+// oversubscribing them the way unlimited Promise.all() would.
+const CONCURRENCY = 4;
+
+// Runs an array of no-arg async job functions with at most CONCURRENCY
+// running at the same time. Replaces what used to be a plain sequential
+// for-await loop over every single source image.
+async function runPool(jobs, concurrency) {
+  let cursor = 0;
+  async function worker() {
+    while (cursor < jobs.length) {
+      const job = jobs[cursor++];
+      await job();
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, jobs.length) }, worker));
+}
+
+// Every image to process, collected up front as a list of jobs instead of
+// being processed inline loop-by-loop. Building the full list first (cheap
+// — it's just filesystem reads) lets runPool() keep CONCURRENCY images
+// in flight across all categories at once, rather than draining one
+// category fully before starting the next.
+const jobs = [];
+
 for (const formatoKey of listDirs(GALLERY_ROOT)) {
   const formatoPath = join(GALLERY_ROOT, formatoKey);
   placeholders.commissions[formatoKey] = {};
@@ -138,55 +167,67 @@ for (const formatoKey of listDirs(GALLERY_ROOT)) {
     placeholders.commissions[formatoKey][finalKey] = {};
     for (const n of listNumberedJpgs(finalPath)) {
       const src = join(finalPath, `${n}.jpg`);
-      const ok = await tryProcess(src, async () => {
-        await writeFull(src);
-        await writeThumbs(src);
-        placeholders.commissions[formatoKey][finalKey][n] = await makePlaceholder(src);
+      jobs.push(async () => {
+        const ok = await tryProcess(src, async () => {
+          await writeFull(src);
+          await writeThumbs(src);
+          placeholders.commissions[formatoKey][finalKey][n] = await makePlaceholder(src);
+        });
+        if (ok) count++;
       });
-      if (ok) count++;
     }
   }
 }
 
 for (const n of listNumberedJpgs(PORTFOLIO_ROOT)) {
   const src = join(PORTFOLIO_ROOT, `${n}.jpg`);
-  const ok = await tryProcess(src, async () => {
-    await writeFull(src);
-    await writeThumbs(src);
-    placeholders.portfolio[n] = await makePlaceholder(src);
+  jobs.push(async () => {
+    const ok = await tryProcess(src, async () => {
+      await writeFull(src);
+      await writeThumbs(src);
+      placeholders.portfolio[n] = await makePlaceholder(src);
+    });
+    if (ok) count++;
   });
-  if (ok) count++;
 }
 
 for (const n of listNumberedJpgs(REVIEWS_ROOT)) {
   const src = join(REVIEWS_ROOT, `${n}.jpg`);
-  const ok = await tryProcess(src, async () => {
-    await writeFull(src);
+  jobs.push(async () => {
+    const ok = await tryProcess(src, async () => {
+      await writeFull(src);
+    });
+    if (ok) count++;
   });
-  if (ok) count++;
 }
 
 for (const file of SINGLE_FILES) {
   if (existsSync(file)) {
-    const ok = await tryProcess(file, async () => {
-      await writeFull(file);
-      // Only avatar.jpg is in SINGLE_FILES right now — if that ever
-      // changes, this blindly assigns to placeholders.avatar for every
-      // entry, so keep this loop avatar-only or revisit this line.
-      placeholders.avatar = await makePlaceholder(file);
+    jobs.push(async () => {
+      const ok = await tryProcess(file, async () => {
+        await writeFull(file);
+        // Only avatar.jpg is in SINGLE_FILES right now — if that ever
+        // changes, this blindly assigns to placeholders.avatar for every
+        // entry, so keep this loop avatar-only or revisit this line.
+        placeholders.avatar = await makePlaceholder(file);
+      });
+      if (ok) count++;
     });
-    if (ok) count++;
   }
 }
 
 if (existsSync(HERO_FILE)) {
-  const ok = await tryProcess(HERO_FILE, async () => {
-    await writeFull(HERO_FILE);
-    await writeHeroWidths(HERO_FILE);
-    placeholders.hero = await makePlaceholder(HERO_FILE);
+  jobs.push(async () => {
+    const ok = await tryProcess(HERO_FILE, async () => {
+      await writeFull(HERO_FILE);
+      await writeHeroWidths(HERO_FILE);
+      placeholders.hero = await makePlaceholder(HERO_FILE);
+    });
+    if (ok) count++;
   });
-  if (ok) count++;
 }
+
+await runPool(jobs, CONCURRENCY);
 
 writeFileSync(PLACEHOLDERS_OUTPUT, JSON.stringify(placeholders));
 writeFileSync('image-webp-failures.json', JSON.stringify(failed));

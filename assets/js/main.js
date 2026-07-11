@@ -254,13 +254,18 @@ const CARD_CYCLE_FADE_MS = 1200;     // crossfade duration — kept slow/gentle 
 // parallel with everything else — every feature that needs image
 // existence info (card cycler, portfolio grid, gallery modal) awaits
 // this same promise instead of firing its own requests.
-const IMAGE_MANIFEST_PROMISE = fetch('image-manifest.json', { cache: 'no-store' })
+// No explicit cache option here (was 'no-store') — this file is a build
+// artifact that only changes once per deploy, so letting the browser use
+// its normal HTTP cache (GitHub Pages sends caching/ETag headers) avoids
+// re-downloading it on every single page load within the same deploy.
+const IMAGE_MANIFEST_PROMISE = fetch('image-manifest.json')
   .then(res => res.ok ? res.json() : null)
   .catch(() => null);
 
 // Tiny blurred LQIP data URIs for portfolio + gallery images, written by
-// generate-image-webp.mjs — same shape as the manifest above.
-const IMAGE_PLACEHOLDERS_PROMISE = fetch('image-placeholders.json', { cache: 'no-store' })
+// generate-image-webp.mjs — same shape as the manifest above, same
+// caching reasoning.
+const IMAGE_PLACEHOLDERS_PROMISE = fetch('image-placeholders.json')
   .then(res => res.ok ? res.json() : null)
   .catch(() => null);
 
@@ -671,7 +676,7 @@ async function loadSlots(){
   if(headerEl) headerEl.textContent = t('slotsLoading');
   if(modalTextEl) modalTextEl.textContent = t('modalSlotsLoading');
   try{
-    const res = await fetch('slots.json', { cache: 'no-store' });
+    const res = await fetch('https://raw.githubusercontent.com/Bielves/bielves.github.io/main/slots.json', { cache: 'no-store' });
     if(!res.ok) throw new Error('slots.json not found');
     SLOTS = await res.json();
   } catch(err){

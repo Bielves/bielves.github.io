@@ -329,7 +329,7 @@
     flex-shrink:0;
   }
   .social-btn:hover{background:var(--accent);}
-  .social-btn i{font-size:0.95rem;}
+  .social-btn svg{width:0.95rem; height:0.95rem; fill:currentColor;}
   .cara-badge{
     width:15px; height:15px;
     border-radius:4px;
@@ -1655,7 +1655,7 @@
     .avatar-ring .avatar{inset:3px;}
     .socials{gap:10px;}
     .social-btn{width:42px; height:42px;}
-    .social-btn i{font-size:1.15rem;}
+    .social-btn svg{width:1.15rem; height:1.15rem;}
     .cara-badge{width:19px; height:19px; font-size:0.85rem;}
     .artist-name{font-size:1.3rem;}
     .speech-bubble{max-width:200px; font-size:0.82rem;}
