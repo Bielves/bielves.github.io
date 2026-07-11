@@ -2101,7 +2101,7 @@ function showLightboxItem(){
     const probe = new Image();
     probe.onload = () => {
       lightboxWrap.style.backgroundImage = `url("${p.placeholder}")`;
-      fitLightboxToImage(probe.naturalWidth, probe.naturalHeight);
+      fitLightboxToImage(probe.naturalWidth, probe.naturalHeight, true);
       reveal();
     };
     // Corrupt placeholder: don't reveal here — fall through to the
@@ -2133,7 +2133,16 @@ function showLightboxItem(){
 // placeholder's dimensions (see showLightboxItem) as well as later off
 // the real photo — falls back to the photo's own natural size when
 // called with no args (e.g. from the resize listener below).
-function fitLightboxToImage(naturalW, naturalH){
+//
+// allowUpscale must be true when sizing off the placeholder: it's
+// generated at PLACEHOLDER_WIDTH (16px) regardless of the real photo's
+// resolution, so its own naturalWidth/Height are always tiny. Capping
+// scale at 1x (as we correctly do for the real photo, to avoid
+// upscaling it past native res) would size the box to ~16px wide —
+// exactly the "sliver" bug. Only the placeholder's ASPECT RATIO is
+// meaningful, not its absolute pixel size, so that call must be allowed
+// to scale up freely to fill the normal preview size.
+function fitLightboxToImage(naturalW, naturalH, allowUpscale){
   naturalW = naturalW || lightboxPhoto.naturalWidth;
   naturalH = naturalH || lightboxPhoto.naturalHeight;
   if(!naturalW || !naturalH) return;
@@ -2147,7 +2156,8 @@ function fitLightboxToImage(naturalW, naturalH){
 
   const maxW = Math.min(window.innerWidth * 0.92, 900);
   const maxH = Math.max(window.innerHeight * 0.8 - descH - CHROME, window.innerHeight * 0.35);
-  const scale = Math.min(maxW / naturalW, maxH / naturalH, 1);
+  const rawScale = Math.min(maxW / naturalW, maxH / naturalH);
+  const scale = allowUpscale ? rawScale : Math.min(rawScale, 1);
   const wrapWidth = Math.floor(naturalW * scale);
 
   lightboxWrap.style.width = wrapWidth + 'px';
