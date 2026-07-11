@@ -338,7 +338,14 @@ function startCardImageCycle(container, formatoKey){
     container.classList.add('has-image');
     const showLayer = onA ? layerB : layerA;
     const hideLayer = onA ? layerA : layerB;
-    showLayer.style.backgroundImage = `url("${src}")`;
+    // Use the resized/compressed version (same wsrv pipeline as the
+    // portfolio grid), not the raw full-res original. Crossfading a large
+    // background-image forces the browser into a GPU compositing layer
+    // that gets rasterized at reduced resolution *during* the opacity
+    // animation for performance, then re-rendered sharp once it settles —
+    // that's what caused the "blurry mid-fade, sharp after" look. Feeding
+    // it an already-small image removes the need for that downsampling.
+    showLayer.style.backgroundImage = `url("${wsrvThumb(src, 500)}")`;
     showLayer.classList.add('active');
     hideLayer.classList.remove('active');
     onA = !onA;
