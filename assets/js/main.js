@@ -300,13 +300,6 @@ function startCardImageCycle(container, formatoKey){
   container.appendChild(layerB);
 
   const finalKeys = Object.keys(DATA[formatoKey].finalizacoes);
-  // Every possible (finalização, example number) combo this card could
-  // show — the actual pool of files isn't known ahead of time (some may
-  // not have been uploaded yet), so we check all of them once up front.
-  const allCombos = [];
-  finalKeys.forEach(finalKey => {
-    for(let n = 1; n <= EXAMPLES_PER_TIER; n++) allCombos.push({ finalKey, n });
-  });
 
   let onA = true;
   let paused = false;
@@ -329,10 +322,29 @@ function startCardImageCycle(container, formatoKey){
   // cheap HEAD-request pass and then simply stays on its placeholder —
   // it never asks again until the page is reloaded.
   async function discoverValidCombos(){
-    const results = await Promise.all(
-      allCombos.map(combo => probeImage(IMG_PATHS.galleryExample(formatoKey, combo.finalKey, combo.n)))
+    // Phase 1: cheap check — does this finalização have ANY example
+    // uploaded at all? Only example #1 is probed per finalização here.
+    // A tier with nothing uploaded yet gets exactly one guaranteed-404
+    // request instead of EXAMPLES_PER_TIER of them.
+    const firstChecks = await Promise.all(
+      finalKeys.map(finalKey => probeImage(IMG_PATHS.galleryExample(formatoKey, finalKey, 1)))
     );
-    validCombos = allCombos.filter((_, i) => results[i]);
+    const populatedFinalKeys = finalKeys.filter((_, i) => firstChecks[i]);
+
+    // Phase 2: only for finalizações confirmed non-empty, check the
+    // remaining example numbers (2..EXAMPLES_PER_TIER).
+    const remainingCombos = [];
+    populatedFinalKeys.forEach(finalKey => {
+      for(let n = 2; n <= EXAMPLES_PER_TIER; n++) remainingCombos.push({ finalKey, n });
+    });
+    const remainingResults = await Promise.all(
+      remainingCombos.map(combo => probeImage(IMG_PATHS.galleryExample(formatoKey, combo.finalKey, combo.n)))
+    );
+
+    validCombos = [
+      ...populatedFinalKeys.map(finalKey => ({ finalKey, n: 1 })),
+      ...remainingCombos.filter((_, i) => remainingResults[i])
+    ];
   }
 
   function turn(){
@@ -1763,17 +1775,25 @@ function probeImage(src){
   return promise;
 }
 
-// Probes numbered files 1.jpg, 2.jpg, ... via thumbSrcFn(n) / fullSrcFn(n)
-// — all candidates up to maxN are probed IN PARALLEL (HEAD requests are
-// cheap with no bytes to transfer, so firing them all at once is fine),
-// then walked in order to keep only the leading contiguous run, allowing
-// up to GAP_TOLERANCE consecutive gaps before stopping. This gives the
-// same "stop after real content ends" result as probing one at a time,
-// just without paying a network round-trip's wait for every single file.
+// Probes numbered files 1.jpg, 2.jpg, ... via thumbSrcFn(n) / fullSrcFn(n).
+// Cheap two-phase check: file #1 is probed alone first. If it's missing,
+// the folder is treated as empty and we stop there — no point firing
+// maxN (up to 40) guaranteed-404 requests for a tier nothing's been
+// uploaded to yet. Only once #1 confirms the folder has content do we
+// probe the rest (2..maxN, in parallel — HEAD requests are cheap with no
+// bytes to transfer, so firing a known-populated folder's remaining
+// candidates all at once is fine), then walk in order to keep only the
+// leading contiguous run, allowing up to GAP_TOLERANCE consecutive gaps
+// before stopping.
 async function probeNumberedFolder(thumbSrcFn, fullSrcFn, maxN, makeMeta){
-  const exists = await Promise.all(
-    Array.from({ length: maxN }, (_, i) => probeImage(thumbSrcFn(i + 1)))
+  const hasFirst = await probeImage(thumbSrcFn(1));
+  if(!hasFirst) return [];
+
+  const rest = await Promise.all(
+    Array.from({ length: maxN - 1 }, (_, i) => probeImage(thumbSrcFn(i + 2)))
   );
+  const exists = [true, ...rest];
+
   const items = [];
   let misses = 0;
   for(let n = 1; n <= maxN; n++){
