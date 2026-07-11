@@ -5,6 +5,7 @@ const STR = {
     navCommissions: "Commissions",
     navPortfolio: "Portfolio",
     navReviews: "Reviews",
+
     revTitle: "Reviews",
     revSub: "Feedback de clientes anteriores",
     hoverHint: "Clique para configurar",
@@ -102,6 +103,7 @@ const STR = {
     navCommissions: "Commissions",
     navPortfolio: "Portfolio",
     navReviews: "Reviews",
+
     revTitle: "Reviews",
     revSub: "Feedback from past clients",
     hoverHint: "Click to configure",
@@ -485,11 +487,6 @@ const DATA = {
       pt: "Envie sua lineart ou sketch pronta e eu coloro. Preço por página.",
       en: "Send your finished lineart or sketch and I'll color it. Priced per page."
     },
-    // Coloring commissions are commercial-use only — there's no personal
-    // tier for this one. Forces modalUsoAtual to 'comercial' on open and
-    // hides the personal/comercial toggle (see openCommissionModal), but
-    // still shows the ToS's commercial usage clause as normal.
-    forcedUso: 'comercial',
     finalizacoes: {
       coloring: {
         preco: 30,
@@ -743,22 +740,27 @@ themeToggle.addEventListener('click', () => {
 const topWrap = document.getElementById('topWrap');
 const pageContent = document.getElementById('pageContent');
 
-// Cached by setHeroHeightVar() below, reused by the scroll handler so it
-// doesn't need to re-measure the DOM on every scroll event.
-let cachedHeroH = 0;
-let cachedNavH = 0;
+let heroH = 0;
+let navH = 0;
+
+// Keeps #pageContent's padding-top matched to however much of the fixed
+// top-wrap is actually visible right now — full hero+nav height while the
+// hero is showing, just nav height once it's minimized. Without this the
+// padding stayed pinned to the full (hero+nav) height forever, leaving a
+// hero-sized gap of empty space above the content whenever the hero was
+// scrolled out of view.
+function syncPageContentPadding(){
+  const hidden = topWrap.classList.contains('hide-hero');
+  pageContent.style.paddingTop = (hidden ? navH : heroH + navH) + 'px';
+}
 
 function setHeroHeightVar(){
   const heroEl = document.querySelector('.hero');
   const navEl = document.querySelector('nav');
-  cachedHeroH = heroEl.offsetHeight;
-  cachedNavH = navEl.offsetHeight;
-  document.documentElement.style.setProperty('--hero-h', cachedHeroH + 'px');
-  // Reserved space always matches the header's CURRENT state (hidden or
-  // not) rather than unconditionally assuming it's fully visible — avoids
-  // reintroducing the scroll-gap bug this is paired with below if a
-  // resize happens while the header is hidden.
-  pageContent.style.paddingTop = (topWrap.classList.contains('hide-hero') ? cachedNavH : cachedHeroH + cachedNavH) + 'px';
+  heroH = heroEl.offsetHeight;
+  navH = navEl.offsetHeight;
+  document.documentElement.style.setProperty('--hero-h', heroH + 'px');
+  syncPageContentPadding();
 }
 window.addEventListener('load', setHeroHeightVar);
 window.addEventListener('resize', setHeroHeightVar);
@@ -769,7 +771,8 @@ let bubbleHideTimer = null;
 
 window.addEventListener('scroll', () => {
   const y = window.scrollY;
-  const nearTop = y < cachedHeroH * 0.5;
+  const heroH = document.querySelector('.hero').offsetHeight;
+  const nearTop = y < heroH * 0.5;
 
   if(nearTop){
     // Only reveal the header once we're actually back near the top of the
@@ -777,12 +780,6 @@ window.addEventListener('scroll', () => {
     // bottom of the Portfolio grid) should NOT bring it back.
     const wasHidden = topWrap.classList.contains('hide-hero');
     topWrap.classList.remove('hide-hero');
-    // The hero banner is translated away (not removed from layout), so
-    // #pageContent's reserved top padding has to shrink down to just the
-    // nav's height in step with it — otherwise the content underneath
-    // keeps the FULL hero+nav gap even though only the nav is still
-    // visible, leaving an empty band where the hero used to be.
-    pageContent.style.paddingTop = (cachedHeroH + cachedNavH) + 'px';
     if(wasHidden && hasHiddenOnce){
       // Brief "welcome back" flash on the reveal itself, not a bubble that
       // stays stuck open for as long as you happen to linger near the top.
@@ -790,11 +787,13 @@ window.addEventListener('scroll', () => {
       clearTimeout(bubbleHideTimer);
       bubbleHideTimer = setTimeout(() => headerBubble.classList.remove('show'), 1600);
     }
+    if(wasHidden) syncPageContentPadding();
   } else {
+    const wasVisible = !topWrap.classList.contains('hide-hero');
     topWrap.classList.add('hide-hero');
-    pageContent.style.paddingTop = cachedNavH + 'px';
     hasHiddenOnce = true;
     headerBubble.classList.remove('show');
+    if(wasVisible) syncPageContentPadding();
   }
 }, { passive:true });
 
@@ -1072,8 +1071,16 @@ function openCommissionModal(formatoKey, preserveState, preselectFinal, preselec
 
   renderGallery(formatoData, modalFinalizacao.value, modalFinalizacao.value === preselectFinal ? preselectImageN : undefined);
 
+  // "Coloring" commissions only make sense as commercial work (client
+  // supplies their own lineart/sketch to be colored) — there's no
+  // personal-use tier, so the toggle is hidden and usage is pinned to
+  // "comercial" (the commercial ToS clause still applies as normal).
+  const usoLocked = formatoKey === 'coloring';
+  document.getElementById('lblUso').style.display = usoLocked ? 'none' : '';
+  modalUsoToggle.style.display = usoLocked ? 'none' : '';
+
   if(!preserveState){
-    modalUsoAtual = formatoData.forcedUso || 'personal';
+    modalUsoAtual = usoLocked ? 'comercial' : 'personal';
     modalPages = 1;
     modalUsoToggle.querySelectorAll('button').forEach(b => b.classList.remove('active'));
     modalUsoToggle.querySelector(`[data-uso="${modalUsoAtual}"]`).classList.add('active');
@@ -1086,12 +1093,6 @@ function openCommissionModal(formatoKey, preserveState, preselectFinal, preselec
     tosPreview.style.display = '';
     tosFull.innerHTML = getTosHtml();
   }
-  // Commercial-only tiers (e.g. Coloring) have nothing to pick between —
-  // same reasoning as the finalização selector above, hide the toggle
-  // rather than show a choice that isn't really one. The ToS clause still
-  // reflects modalUsoAtual normally (forced to 'comercial' above), so the
-  // commercial usage terms still show in full.
-  modalUsoToggle.style.display = formatoData.forcedUso ? 'none' : '';
 
   currencySelect.value = DISPLAY_CURRENCY;
   atualizarModalPreco();
