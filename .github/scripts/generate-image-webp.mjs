@@ -14,8 +14,17 @@
 // Same widths/quality wsrvThumb() used to request from wsrv.nl, so visual
 // output doesn't change — only where the file is served from.
 //
-// The single fixed images (avatar, hero, review avatars) only ever get the
-// full-size conversion — they're never resized on the fly.
+// avatar.jpg and every images/reviews/<n>.jpg only ever get the full-size
+// conversion — small, low-traffic images, not worth extra variants.
+//
+// hero.jpg is the exception: it's full-viewport-width and doubles as both
+// the header banner and (same file, cropped via CSS) the footer, so it's
+// the single heaviest image most visitors load — and previously the ONLY
+// image on the whole site with no responsive sizing at all, meaning a
+// phone on 3G downloaded the exact same 2000px file a 4K desktop did.
+// Gets HERO_WIDTHS variants (hero-640.webp / hero-1080.webp /
+// hero-1600.webp) alongside the existing full hero.webp (2000w) — main.js
+// picks whichever fits the viewport.
 //
 // Also writes image-placeholders.json — a tiny (~16px wide) blurred base64
 // WebP for every portfolio + gallery image, inlined directly as a data URI
@@ -32,11 +41,13 @@ import sharp from 'sharp';
 const GALLERY_ROOT = 'images/commissions/gallery';
 const PORTFOLIO_ROOT = 'images/portfolio';
 const REVIEWS_ROOT = 'images/reviews';
-const SINGLE_FILES = ['images/avatar/avatar.jpg', 'images/hero/hero.jpg'];
+const SINGLE_FILES = ['images/avatar/avatar.jpg'];
+const HERO_FILE = 'images/hero/hero.jpg';
 const PLACEHOLDERS_OUTPUT = 'image-placeholders.json';
 
 const NUMBERED_JPG = /^(\d+)\.jpg$/i;
 const THUMB_WIDTHS = [150, 350, 500];
+const HERO_WIDTHS = [640, 1080, 1600];
 const FULL_MAX_WIDTH = 2000;
 const THUMB_QUALITY = 70;
 const FULL_QUALITY = 82;
@@ -78,6 +89,22 @@ async function writeThumbs(inputPath) {
   }
 }
 
+// Same idea as writeThumbs but at hero-appropriate widths/quality — these
+// are meant to fill most of the viewport, not sit in a small card or
+// thumbnail, so they stay at FULL_QUALITY rather than THUMB_QUALITY.
+// withoutEnlargement means a source narrower than a given width just
+// skips that variant instead of upscaling it.
+async function writeHeroWidths(inputPath) {
+  const dir = dirname(inputPath);
+  const base = basename(inputPath).replace(/\.jpg$/i, '');
+  for (const w of HERO_WIDTHS) {
+    await sharp(inputPath)
+      .resize({ width: w, withoutEnlargement: true })
+      .webp({ quality: FULL_QUALITY })
+      .toFile(join(dir, `${base}-${w}.webp`));
+  }
+}
+
 async function makePlaceholder(inputPath) {
   const buf = await sharp(inputPath)
     .resize({ width: PLACEHOLDER_WIDTH })
@@ -87,7 +114,21 @@ async function makePlaceholder(inputPath) {
 }
 
 let count = 0;
+const failed = [];
 const placeholders = { commissions: {}, portfolio: {} };
+
+// Runs fn(), and on failure logs the file + error and lets the caller
+// skip it instead of crashing the whole build. Returns true on success.
+async function tryProcess(src, fn) {
+  try {
+    await fn();
+    return true;
+  } catch (err) {
+    console.error(`generate-image-webp.mjs: SKIPPING broken image "${src}" — ${err.message}`);
+    failed.push(src);
+    return false;
+  }
+}
 
 for (const formatoKey of listDirs(GALLERY_ROOT)) {
   const formatoPath = join(GALLERY_ROOT, formatoKey);
@@ -97,34 +138,55 @@ for (const formatoKey of listDirs(GALLERY_ROOT)) {
     placeholders.commissions[formatoKey][finalKey] = {};
     for (const n of listNumberedJpgs(finalPath)) {
       const src = join(finalPath, `${n}.jpg`);
-      await writeFull(src);
-      await writeThumbs(src);
-      placeholders.commissions[formatoKey][finalKey][n] = await makePlaceholder(src);
-      count++;
+      const ok = await tryProcess(src, async () => {
+        await writeFull(src);
+        await writeThumbs(src);
+        placeholders.commissions[formatoKey][finalKey][n] = await makePlaceholder(src);
+      });
+      if (ok) count++;
     }
   }
 }
 
 for (const n of listNumberedJpgs(PORTFOLIO_ROOT)) {
   const src = join(PORTFOLIO_ROOT, `${n}.jpg`);
-  await writeFull(src);
-  await writeThumbs(src);
-  placeholders.portfolio[n] = await makePlaceholder(src);
-  count++;
+  const ok = await tryProcess(src, async () => {
+    await writeFull(src);
+    await writeThumbs(src);
+    placeholders.portfolio[n] = await makePlaceholder(src);
+  });
+  if (ok) count++;
 }
 
 for (const n of listNumberedJpgs(REVIEWS_ROOT)) {
-  await writeFull(join(REVIEWS_ROOT, `${n}.jpg`));
-  count++;
+  const src = join(REVIEWS_ROOT, `${n}.jpg`);
+  const ok = await tryProcess(src, async () => {
+    await writeFull(src);
+  });
+  if (ok) count++;
 }
 
 for (const file of SINGLE_FILES) {
   if (existsSync(file)) {
-    await writeFull(file);
-    count++;
+    const ok = await tryProcess(file, async () => {
+      await writeFull(file);
+    });
+    if (ok) count++;
   }
 }
 
+if (existsSync(HERO_FILE)) {
+  const ok = await tryProcess(HERO_FILE, async () => {
+    await writeFull(HERO_FILE);
+    await writeHeroWidths(HERO_FILE);
+  });
+  if (ok) count++;
+}
+
 writeFileSync(PLACEHOLDERS_OUTPUT, JSON.stringify(placeholders));
+writeFileSync('image-webp-failures.json', JSON.stringify(failed));
 
 console.log(`generate-image-webp.mjs: wrote WebP variants for ${count} source images, plus ${PLACEHOLDERS_OUTPUT}.`);
+if (failed.length) {
+  console.warn(`generate-image-webp.mjs: ${failed.length} image(s) skipped due to errors:\n  ${failed.join('\n  ')}`);
+}

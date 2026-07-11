@@ -123,17 +123,6 @@
     overflow:hidden;
     border-bottom:3px solid var(--border-color);
   }
-  .hero::after{
-    content:"Background art";
-    position:absolute;
-    top:14px; left:20px;
-    font-family:'Ubuntu', -apple-system, sans-serif;
-    font-size:0.72rem;
-    text-transform:uppercase;
-    letter-spacing:0.08em;
-    color:var(--muted);
-  }
-  .hero.has-image::after{ content:none; }
   .lang-toggle{
     position:absolute;
     top:12px; right:20px;

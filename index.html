@@ -7,7 +7,11 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="assets/css/style.css">
 <link rel="preload" as="font" type="font/woff2" href="assets/webfonts/ubuntu-400.woff2" crossorigin>
-<link rel="preload" as="image" href="images/hero/hero.webp" fetchpriority="high">
+<link rel="preload" as="image"
+      href="images/hero/hero.webp"
+      imagesrcset="images/hero/hero-640.webp 640w, images/hero/hero-1080.webp 1080w, images/hero/hero-1600.webp 1600w, images/hero/hero.webp 2000w"
+      imagesizes="100vw"
+      fetchpriority="high">
 </head>
 <body>
 <script>
@@ -30,7 +34,6 @@
       <div class="artist-block">
         <div class="avatar-ring">
           <div class="avatar" id="avatarPlaceholder">
-            Avatar
             <div class="speech-bubble" id="headerBubble">Hi, Welcome!!</div>
           </div>
         </div>

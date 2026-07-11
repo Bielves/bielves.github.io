@@ -25,6 +25,15 @@ const GALLERY_ROOT = 'images/commissions/gallery';
 const PORTFOLIO_ROOT = 'images/portfolio';
 const OUTPUT_PATH = 'image-manifest.json';
 
+// Written by generate-image-webp.mjs (which runs first in static.yml) —
+// full source paths of any images Sharp failed to convert. We exclude
+// those from the manifest so main.js never tries to load a .webp variant
+// that doesn't exist; the rest of the site still deploys normally.
+const WEBP_FAILURES_PATH = 'image-webp-failures.json';
+const webpFailures = new Set(
+  existsSync(WEBP_FAILURES_PATH) ? JSON.parse(readFileSync(WEBP_FAILURES_PATH, 'utf8')) : []
+);
+
 const NUMBERED_JPG = /^(\d+)\.jpg$/i;
 const CAPTION_KEYS = ['TITLE_PT', 'TITLE_EN', 'DESC_PT', 'DESC_EN'];
 
@@ -80,6 +89,7 @@ function readNumberedFolder(path) {
     .map((name) => name.match(NUMBERED_JPG))
     .filter(Boolean)
     .map((match) => parseInt(match[1], 10))
+    .filter((n) => !webpFailures.has(join(path, `${n}.jpg`)))
     .sort((a, b) => a - b);
 
   const captionsPath = join(path, 'captions.md');

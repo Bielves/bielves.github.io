@@ -318,6 +318,20 @@ function webpVariant(rawPath, widthPx){
   return `${dir}/${base}${widthPx ? `-${widthPx}` : ''}.webp`;
 }
 
+// Hero is full-viewport-width and reused (same file) for the footer, so
+// it's the single heaviest image most visitors load — this used to always
+// request the full 2000px file regardless of screen size. Picks the
+// smallest of the generated widths (see HERO_WIDTHS in
+// generate-image-webp.mjs) that's still >= the viewport's actual physical
+// pixel width, falling back to the full-size file for anything bigger
+// than the largest generated variant.
+function heroWebpVariant(rawPath){
+  const HERO_WIDTHS = [640, 1080, 1600]; // must match generate-image-webp.mjs
+  const targetPx = window.innerWidth * (window.devicePixelRatio || 1);
+  const width = HERO_WIDTHS.find(w => w >= targetPx);
+  return webpVariant(rawPath, width); // width undefined -> falls through to full-size
+}
+
 // Tries to load `src` in the background; only swaps the element's
 // background-image if the file actually exists, otherwise the CSS
 // placeholder pattern + label text stay put. This means the site keeps
@@ -2036,11 +2050,22 @@ function showLightboxItem(){
     probe.src = p.placeholder;
   }
 
-  lightboxPhoto.onload = () => {
+  // Preload off-screen instead of assigning src to the visible img
+  // directly — same reasoning as showGalleryImage(). An <img> that's
+  // actively downloading gets Chrome's own native loading spinner drawn
+  // on it, which our opacity:0/CSS can't suppress since it's the
+  // browser's own affordance, not ours. Loading into a detached Image()
+  // first and only pointing the real element at an already-cached URL
+  // means the assignment is instant — nothing for the browser to show a
+  // spinner for.
+  const fullSrc = webpVariant(p.fullSrc); // already confirmed to exist during discovery
+  const preloadFull = new Image();
+  preloadFull.onload = () => {
+    lightboxPhoto.src = fullSrc;
     lightboxPhoto.classList.add('loaded');
-    fitLightboxToImage(lightboxPhoto.naturalWidth, lightboxPhoto.naturalHeight);
+    fitLightboxToImage(preloadFull.naturalWidth, preloadFull.naturalHeight);
   };
-  lightboxPhoto.src = webpVariant(p.fullSrc); // already confirmed to exist during discovery
+  preloadFull.src = fullSrc;
 
   portfolioModalOverlay.classList.add('active');
 }
@@ -2208,7 +2233,8 @@ function renderReviews(){
 
     const avatar = document.createElement('div');
     avatar.className = 'review-avatar';
-    avatar.textContent = 'Avatar';
+    // Small (42px) circle — just sits as a flat color until the photo
+    // loads, no text label needed for something this size.
     // images/reviews/<n>.jpg, 1-indexed to match this reviewer's position
     // in reviewsData — falls back to the "Avatar" placeholder circle if
     // that file hasn't been uploaded yet (same pattern as every other
@@ -2272,8 +2298,8 @@ discoverPortfolio();
 renderReviews();
 loadSlots();
 tryBgImage(document.getElementById('avatarPlaceholder'), webpVariant(IMG_PATHS.avatar()));
-tryBgImage(document.getElementById('heroBanner'), webpVariant(IMG_PATHS.hero()));
+tryBgImage(document.getElementById('heroBanner'), heroWebpVariant(IMG_PATHS.hero()));
 // Footer intentionally reuses the exact same hero image (see the FOOTER
 // comment block in style.css) rather than a separate asset — one picture,
 // cropped to the top for the header and to the bottom for the footer.
-tryBgImage(document.getElementById('footerBg'), webpVariant(IMG_PATHS.hero()));
+tryBgImage(document.getElementById('footerBg'), heroWebpVariant(IMG_PATHS.hero()));
