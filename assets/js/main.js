@@ -237,22 +237,46 @@ const IMG_PATHS = {
   // index (1-based) — images/reviews/1.jpg is reviewsData[0]'s avatar, etc.
   // Falls back to the placeholder circle automatically if missing, same
   // pattern as every other tryBgImage() spot on the site.
-  reviewAvatar:   (n) => `${IMG_BASE}reviews/${n}.jpg`,
-  portfolioCaptions: () => `${IMG_BASE}portfolio/captions.md`,
-  galleryCaptions: (formatoKey, finalKey) => `${IMG_BASE}commissions/gallery/${formatoKey}/${finalKey}/captions.md`
+  reviewAvatar:   (n) => `${IMG_BASE}reviews/${n}.jpg`
 };
 const CARD_CYCLE_INTERVAL_MS = 4500; // dwell time per image before crossfading
 const CARD_CYCLE_FADE_MS = 1200;     // crossfade duration — kept slow/gentle on purpose
+
+// ==================== IMAGE MANIFEST ====================
+// image-manifest.json is generated fresh on every deploy by
+// .github/scripts/generate-image-manifest.mjs (run as a step in
+// static.yml, right before the Pages upload) — it walks the images/
+// folder on the server and writes down exactly which numbered example
+// images (and which captions.md entries) actually exist. The site reads
+// that instead of probing/guessing filenames with speculative requests,
+// which used to spam the console with expected-but-avoidable 404s for
+// every combination that doesn't exist yet. Fetched once, up front, in
+// parallel with everything else — every feature that needs image
+// existence info (card cycler, portfolio grid, gallery modal) awaits
+// this same promise instead of firing its own requests.
+const IMAGE_MANIFEST_PROMISE = fetch('image-manifest.json', { cache: 'no-store' })
+  .then(res => res.ok ? res.json() : null)
+  .catch(() => null);
+
+// Looks up { numbers, captions } for one commissions/gallery/<formatoKey>/
+// <finalKey>/ folder. Always returns a safe empty shape — never throws or
+// returns undefined — so callers don't need to guard against a missing
+// manifest, an unlisted formatoKey, or a finalização with nothing
+// uploaded yet; they all just look like "no images here".
+function manifestCommissionFolder(manifest, formatoKey, finalKey){
+  const empty = { numbers: [], captions: {} };
+  if(!manifest) return empty;
+  const forFormato = manifest.commissions[formatoKey];
+  return (forFormato && forFormato[finalKey]) || empty;
+}
 
 // ==================== IMAGE RESIZING (wsrv.nl) ====================
 // Generates a resized/compressed URL for a given source image on demand —
 // no separate thumbnail files to create or maintain. wsrv.nl fetches the
 // original from the live site, resizes+caches it at its edge, and returns
 // the smaller version. Used ONLY for display srcs (e.g. the portfolio grid
-// below); existence probing (probeImage/probeNumberedFolder further down)
-// always checks the raw original path, never the wsrv URL — wsrv doesn't
-// reliably 404 the way the raw file does, so routing probes through it
-// could make missing images look like they exist.
+// below) — existence is never checked through wsrv, only via the image
+// manifest, which always lists the raw original filenames.
 // IMPORTANT: wsrv can only fetch images that are actually live on the
 // public internet, so this can't work from a local file:// preview or a
 // localhost dev server — those cases fall back to the original, full-size
@@ -283,13 +307,12 @@ function tryBgImage(el, src){
 // Cycles through the SAME images used in the commission config modal's
 // gallery (images/commissions/gallery/<formatoKey>/<finalKey>/<n>.jpg) — so
 // the front card previews the same art "Click to configure" leads to.
-// Each turn picks a RANDOM finalização tier + a random example number (1..
-// EXAMPLES_PER_TIER) out of every combo that exists for this card, waits,
-// then slowly crossfades to it — so the mix of styles shown feels varied
-// instead of always the same fixed order. Files that don't exist yet are
-// simply skipped (tried again at random later) instead of breaking the
-// cycle; if nothing at all exists for this card, it just leaves the
-// placeholder showing and doesn't spin a hot loop trying forever.
+// Each turn picks a RANDOM finalização tier + a random example number out
+// of every combo the image manifest reports for this card, waits, then
+// slowly crossfades to it — so the mix of styles shown feels varied
+// instead of always the same fixed order. If nothing at all exists for
+// this card, it just leaves the placeholder showing and doesn't spin a
+// hot loop trying forever.
 function startCardImageCycle(container, formatoKey){
   const layerA = document.createElement('div');
   const layerB = document.createElement('div');
@@ -314,37 +337,15 @@ function startCardImageCycle(container, formatoKey){
     cardCycleTimers.push(timerId);
   }
 
-  // Checks every combo exactly ONCE (via the shared, deduped probeCache —
-  // same cache discoverPortfolio() draws from, so files it has already
-  // checked aren't re-requested here) and keeps only the ones that
-  // actually exist. This replaces the old "keep re-trying every 4.5s
-  // forever" behavior: a card with nothing uploaded yet now does one
-  // cheap HEAD-request pass and then simply stays on its placeholder —
-  // it never asks again until the page is reloaded.
+  // Reads straight from the image manifest — no requests fired at all.
+  // A tier with nothing uploaded yet just resolves to an empty list and
+  // the card stays on its placeholder; it never asks again either way,
+  // since the manifest is only fetched once per page load.
   async function discoverValidCombos(){
-    // Phase 1: cheap check — does this finalização have ANY example
-    // uploaded at all? Only example #1 is probed per finalização here.
-    // A tier with nothing uploaded yet gets exactly one guaranteed-404
-    // request instead of EXAMPLES_PER_TIER of them.
-    const firstChecks = await Promise.all(
-      finalKeys.map(finalKey => probeImage(IMG_PATHS.galleryExample(formatoKey, finalKey, 1)))
+    const manifest = await IMAGE_MANIFEST_PROMISE;
+    validCombos = finalKeys.flatMap(finalKey =>
+      manifestCommissionFolder(manifest, formatoKey, finalKey).numbers.map(n => ({ finalKey, n }))
     );
-    const populatedFinalKeys = finalKeys.filter((_, i) => firstChecks[i]);
-
-    // Phase 2: only for finalizações confirmed non-empty, check the
-    // remaining example numbers (2..EXAMPLES_PER_TIER).
-    const remainingCombos = [];
-    populatedFinalKeys.forEach(finalKey => {
-      for(let n = 2; n <= EXAMPLES_PER_TIER; n++) remainingCombos.push({ finalKey, n });
-    });
-    const remainingResults = await Promise.all(
-      remainingCombos.map(combo => probeImage(IMG_PATHS.galleryExample(formatoKey, combo.finalKey, combo.n)))
-    );
-
-    validCombos = [
-      ...populatedFinalKeys.map(finalKey => ({ finalKey, n: 1 })),
-      ...remainingCombos.filter((_, i) => remainingResults[i])
-    ];
   }
 
   function turn(){
@@ -563,12 +564,10 @@ const FINAL_LABELS = {
 };
 
 // Real gallery images live at commissions/gallery/<formatoKey>/<finalKey>/1..N.jpg —
-// the same folders the modal's gallery thumbnails browse (see GALLERY_PER_TIER_MAX
-// further down) and the front-card cycler below draws its previews from.
-// EXAMPLES_PER_TIER only controls the front-card cycler's pool of (tier, image
-// number) combos to gamble on each turn — it doesn't cap how many images the
-// modal gallery can browse, so uploading more than this per tier is fine.
-const EXAMPLES_PER_TIER = 4;
+// the same folders the modal's gallery thumbnails browse and the front-card
+// cycler below draws its previews from. The cycler picks from every (tier,
+// image number) combo the manifest reports for this formatoKey, so
+// uploading more examples per tier just gives it a bigger pool to draw from.
 
 const COMERCIAL_MULT = 2;
 let modalUsoAtual = 'personal';
@@ -1039,26 +1038,15 @@ function renderGallery(formatoData, finalKey, preselectN){
   discoverExtraGalleryImages(galleryFormatoKey, galleryFinalKeyForImages, token);
 }
 
-// Probes numbered files beyond the visible row (commissions/gallery/
-// <formatoKey>/<finalKey>/N.jpg) to find out if there are more examples
-// than fit in one row. Stops after a short run of consecutive misses.
+// Looks up the real list of example numbers for this tier from the image
+// manifest, to find out if there are more examples than fit in one row.
 // If the real count doesn't exceed the visible row, the simple 1..N view
 // from renderGallery() above is left untouched — no need for arrows.
 async function discoverExtraGalleryImages(formatoKey, finalKey, token){
-  const found = [];
-  let misses = 0;
-  for(let n = 1; n <= GALLERY_PER_TIER_MAX; n++){
-    const result = await probeImage(IMG_PATHS.galleryExample(formatoKey, finalKey, n));
-    if(token !== galleryDiscoveryToken) return; // a different card/tier opened meanwhile — abandon
-    if(result){
-      misses = 0;
-      found.push(n);
-    } else {
-      misses++;
-      if(misses >= GAP_TOLERANCE) break;
-    }
-  }
-  if(token !== galleryDiscoveryToken) return;
+  const manifest = await IMAGE_MANIFEST_PROMISE;
+  if(token !== galleryDiscoveryToken) return; // a different card/tier opened meanwhile — abandon
+
+  const found = manifestCommissionFolder(manifest, formatoKey, finalKey).numbers;
   if(found.length <= GALLERY_THUMBS_VISIBLE) return; // fits in one row already, nothing to change
 
   galleryThumbNumbers = found;
@@ -1740,77 +1728,11 @@ const PLACEHOLDER_DESC = {
   pt: 'Descrição — técnica, personagem, contexto da peça.',
   en: 'Description — technique, character, context of the piece.'
 };
-const PORTFOLIO_MAX = 40; // upper bound when probing images/portfolio/thumbs+fulls
-const GALLERY_PER_TIER_MAX = 24; // upper bound when probing for extra commission gallery images beyond
-                                  // the visible thumbnail row (also used when pulling these same
-                                  // images into the matching Portfolio tab, see discoverPortfolio() below)
-const GAP_TOLERANCE = 2;        // consecutive missing numbers before we stop probing a folder
-
 let portfolioItems = [];             // every discovered item, in final ALL-tab order
 let portfolioReady = false;
 let activePortfolioTab = 'all';
 let currentLightboxList = [];
 let lightboxIndex = 0;
-
-// Resolves true/false for whether src exists — uses a HEAD request instead
-// of downloading the actual image, so probing hundreds of numbered
-// filenames to see which exist doesn't also download all of them. This is
-// what makes loading="lazy" on the actual grid <img> tags meaningful: the
-// browser only fetches image bytes for the rows near the viewport, instead
-// of every candidate file getting fully downloaded during discovery.
-// Cache is keyed by URL and shared by EVERY feature that needs to know
-// "does this file exist" (portfolio discovery, gallery modal discovery,
-// card image cycler). Each URL is only ever HEAD-probed once per page
-// load, no matter how many features ask about it or how many times —
-// this is what stops the card cycler from re-probing the same missing
-// files forever (see startCardImageCycle above).
-const probeCache = new Map(); // src -> Promise<boolean>
-
-function probeImage(src){
-  if(probeCache.has(src)) return probeCache.get(src);
-  const promise = fetch(src, { method: 'HEAD', cache: 'no-store' })
-    .then(res => res.ok)
-    .catch(() => false);
-  probeCache.set(src, promise);
-  return promise;
-}
-
-// Probes numbered files 1.jpg, 2.jpg, ... via thumbSrcFn(n) / fullSrcFn(n).
-// Cheap two-phase check: file #1 is probed alone first. If it's missing,
-// the folder is treated as empty and we stop there — no point firing
-// maxN (up to 40) guaranteed-404 requests for a tier nothing's been
-// uploaded to yet. Only once #1 confirms the folder has content do we
-// probe the rest (2..maxN, in parallel — HEAD requests are cheap with no
-// bytes to transfer, so firing a known-populated folder's remaining
-// candidates all at once is fine), then walk in order to keep only the
-// leading contiguous run, allowing up to GAP_TOLERANCE consecutive gaps
-// before stopping.
-async function probeNumberedFolder(thumbSrcFn, fullSrcFn, maxN, makeMeta){
-  const hasFirst = await probeImage(thumbSrcFn(1));
-  if(!hasFirst) return [];
-
-  const rest = await Promise.all(
-    Array.from({ length: maxN - 1 }, (_, i) => probeImage(thumbSrcFn(i + 2)))
-  );
-  const exists = [true, ...rest];
-
-  const items = [];
-  let misses = 0;
-  for(let n = 1; n <= maxN; n++){
-    if(!exists[n - 1]){
-      misses++;
-      if(misses >= GAP_TOLERANCE) break;
-      continue;
-    }
-    misses = 0;
-    items.push({
-      thumbSrc: thumbSrcFn(n),
-      fullSrc: fullSrcFn(n),
-      ...makeMeta(n)
-    });
-  }
-  return items;
-}
 
 // ==================== PORTFOLIO CAPTIONS (captions.md) ====================
 // Optional per-image title/description override that lives right next to
@@ -1844,47 +1766,12 @@ async function probeNumberedFolder(thumbSrcFn, fullSrcFn, maxN, makeMeta){
 //     falls back to the generated title ("Piece N") / shared category
 //     description exactly as before, so this is purely additive and
 //     nothing breaks while captions are filled in gradually.
-const CAPTION_KEYS = ['TITLE_PT', 'TITLE_EN', 'DESC_PT', 'DESC_EN'];
-
-function parseCaptionsMd(text){
-  const result = {}; // "n" -> { TITLE_PT, TITLE_EN, DESC_PT, DESC_EN }
-  let currentN = null;
-  let currentKey = null;
-  text.split('\n').forEach((raw) => {
-    const line = raw.replace(/\r$/, '');
-    const headerMatch = line.match(/^\s*\[(\d+)\]\s*$/);
-    if(headerMatch){
-      currentN = headerMatch[1];
-      currentKey = null;
-      if(!result[currentN]) result[currentN] = {};
-      return;
-    }
-    if(line.trim() === ''){
-      currentKey = null;
-      return;
-    }
-    const keyMatch = line.match(/^([A-Z_]+):\s?(.*)$/);
-    if(keyMatch && CAPTION_KEYS.includes(keyMatch[1]) && currentN !== null){
-      currentKey = keyMatch[1];
-      result[currentN][currentKey] = keyMatch[2];
-      return;
-    }
-    if(currentKey && currentN !== null){
-      result[currentN][currentKey] += ' ' + line.trim();
-    }
-  });
-  return result;
-}
-
-// Fetches and parses a captions.md file; resolves to {} (no overrides) if
-// the file doesn't exist or fails to load, so callers never need to
-// special-case a missing file.
-function fetchCaptions(url){
-  return fetch(url, { cache: 'no-store' })
-    .then(res => res.ok ? res.text() : '')
-    .then(parseCaptionsMd)
-    .catch(() => ({}));
-}
+//
+// Parsing happens server-side now (see .github/scripts/generate-image-
+// manifest.mjs) — each folder's captions.md is already turned into a
+// { "n": { TITLE_PT, TITLE_EN, DESC_PT, DESC_EN } } object and embedded in
+// image-manifest.json, so the client never fetches or parses .md files
+// directly. resolveCaption() below just applies the parsed result.
 
 // Builds the final { title, desc } (each { pt, en } ) for image n,
 // preferring a captions.md entry when present and falling back field by
@@ -1905,61 +1792,48 @@ function resolveCaption(captions, n, fallbackTitle, fallbackDesc){
 }
 
 async function discoverPortfolio(){
+  const manifest = await IMAGE_MANIFEST_PROMISE;
+
   // 1) Manually-curated set — always leads the ALL tab, in file order.
   // Untagged (category: null), so these never show under a category tab.
-  // captions.md (if present) is fetched alongside the numbered probes and
-  // overrides the generated "Piece N" title / placeholder desc per image.
-  const manualPromise = fetchCaptions(IMG_PATHS.portfolioCaptions()).then((captions) =>
-    probeNumberedFolder(
-      IMG_PATHS.portfolioImage,
-      IMG_PATHS.portfolioImage,
-      PORTFOLIO_MAX,
-      (n) => ({
-        category: null,
-        ...resolveCaption(captions, n, { pt: `Trabalho ${n}`, en: `Piece ${n}` }, PLACEHOLDER_DESC)
-      })
-    )
-  );
+  // captions.md (if present) was already parsed server-side and lives at
+  // manifest.portfolio.captions.
+  const portfolioData = (manifest && manifest.portfolio) || { numbers: [], captions: {} };
+  const manual = portfolioData.numbers.map(n => ({
+    thumbSrc: IMG_PATHS.portfolioImage(n),
+    fullSrc: IMG_PATHS.portfolioImage(n),
+    category: null,
+    ...resolveCaption(portfolioData.captions, n, { pt: `Trabalho ${n}`, en: `Piece ${n}` }, PLACEHOLDER_DESC)
+  }));
 
   // 2) Auto-pull every commission gallery image into its matching tab —
   // reuses images already uploaded for the commission menu, no re-upload.
-  // This is the only source that feeds the category tabs. Kicked off
-  // alongside (1) above rather than after it, so the manual set doesn't
-  // block the gallery probes (or vice versa) from starting. Each folder's
+  // This is the only source that feeds the category tabs. Each folder's
   // captions.md (if present) overrides the shared format label / finalização
   // desc on a per-image basis.
-  const galleryProbes = [];
+  const byCategory = {};
+  PORTFOLIO_CATEGORIES.forEach(c => byCategory[c] = []);
+
   Object.keys(DATA).forEach((formatoKey) => {
     const finalizacoes = DATA[formatoKey].finalizacoes || {};
     Object.keys(finalizacoes).forEach((finalKey) => {
       const cat = FINAL_TO_PORTFOLIO_CATEGORY[finalKey];
-      if(cat) galleryProbes.push({ formatoKey, finalKey, cat });
+      if(!cat) return;
+      const finalDesc = (finalizacoes[finalKey] || {}).desc || PLACEHOLDER_DESC;
+      const folder = manifestCommissionFolder(manifest, formatoKey, finalKey);
+      const items = folder.numbers.map(n => ({
+        thumbSrc: IMG_PATHS.galleryExample(formatoKey, finalKey, n),
+        fullSrc: IMG_PATHS.galleryExample(formatoKey, finalKey, n),
+        category: cat,
+        ...resolveCaption(folder.captions, n, DATA[formatoKey].label, finalDesc)
+      }));
+      byCategory[cat].push(...items);
     });
   });
-  const galleryResultsPromise = Promise.all(galleryProbes.map(async ({ formatoKey, finalKey, cat }) => {
-    const finalDesc = (DATA[formatoKey].finalizacoes[finalKey] || {}).desc || PLACEHOLDER_DESC;
-    const captions = await fetchCaptions(IMG_PATHS.galleryCaptions(formatoKey, finalKey));
-    const items = await probeNumberedFolder(
-      (n) => IMG_PATHS.galleryExample(formatoKey, finalKey, n),
-      (n) => IMG_PATHS.galleryExample(formatoKey, finalKey, n),
-      GALLERY_PER_TIER_MAX,
-      (n) => ({
-        category: cat,
-        ...resolveCaption(captions, n, DATA[formatoKey].label, finalDesc)
-      })
-    );
-    return { cat, items };
-  }));
-
-  const [manual, galleryResults] = await Promise.all([manualPromise, galleryResultsPromise]);
 
   // Assemble final order: manual uploads -> rendered -> steamcapsules ->
   // flatcell -> sketchline -> others (auto-pulled commission gallery images
   // within each category, in DATA/finalização iteration order).
-  const byCategory = {};
-  PORTFOLIO_CATEGORIES.forEach(c => byCategory[c] = []);
-  galleryResults.forEach(({ cat, items }) => byCategory[cat].push(...items));
-
   portfolioItems = [
     ...manual,
     ...PORTFOLIO_CATEGORIES.flatMap(cat => byCategory[cat])
