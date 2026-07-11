@@ -207,8 +207,8 @@ let LANG = 'en';
 //     (which shows image 1 from each finalização tier) — one set of files
 //     covers both places, no separate "cards" folder to keep in sync.
 //   images/portfolio/<n>.jpg                                — one file per
-//     piece, used both as the grid thumbnail (resized on the fly via wsrv,
-//     see WSRV_ORIGIN/wsrvThumb below) and as the lightbox full image.
+//     piece, used both as the grid thumbnail (resized on the fly to WebP,
+//     see webpVariant() below) and as the lightbox full image.
 //   images/avatar/avatar.jpg                                — header avatar
 //   images/hero/hero.jpg                                    — header background art
 //   images/reviews/<n>.jpg                                  — round avatar for the
@@ -270,24 +270,23 @@ function manifestCommissionFolder(manifest, formatoKey, finalKey){
   return (forFormato && forFormato[finalKey]) || empty;
 }
 
-// ==================== IMAGE RESIZING (wsrv.nl) ====================
-// Generates a resized/compressed URL for a given source image on demand —
-// no separate thumbnail files to create or maintain. wsrv.nl fetches the
-// original from the live site, resizes+caches it at its edge, and returns
-// the smaller version. Used ONLY for display srcs (e.g. the portfolio grid
-// below) — existence is never checked through wsrv, only via the image
-// manifest, which always lists the raw original filenames.
-// IMPORTANT: wsrv can only fetch images that are actually live on the
-// public internet, so this can't work from a local file:// preview or a
-// localhost dev server — those cases fall back to the original, full-size
-// image automatically.
-const SITE_ORIGIN = 'bielves.github.io';
+// ==================== IMAGE RESIZING (self-hosted WebP) ====================
+// generate-image-webp.mjs (run as a build step in static.yml, alongside
+// generate-image-manifest.mjs) converts every source jpg to WebP at deploy
+// time and writes it right next to the original — a full-size conversion
+// plus 150/350/500px-wide thumbnails for the spots that need them. This
+// just builds the path to whichever variant a given call site wants; no
+// separate thumbnail files to create or maintain by hand, and no
+// third-party proxy in the request path.
+// In local preview the build step hasn't run, so no .webp files exist yet —
+// fall back to the original full-size jpg automatically.
 const IS_LOCAL_PREVIEW = ['', 'localhost', '127.0.0.1'].includes(location.hostname);
 
-function wsrvThumb(rawPath, widthPx){
+function webpVariant(rawPath, widthPx){
   if(IS_LOCAL_PREVIEW) return rawPath;
-  const fullUrl = `https://${SITE_ORIGIN}/${rawPath}`;
-  return `https://wsrv.nl/?url=${encodeURIComponent(fullUrl)}&w=${widthPx}&fit=cover&output=webp&q=70`;
+  const dir = rawPath.slice(0, rawPath.lastIndexOf('/'));
+  const base = rawPath.slice(rawPath.lastIndexOf('/') + 1).replace(/\.jpg$/i, '');
+  return `${dir}/${base}${widthPx ? `-${widthPx}` : ''}.webp`;
 }
 
 // Tries to load `src` in the background; only swaps the element's
@@ -367,7 +366,7 @@ function startCardImageCycle(container, formatoKey){
     // animation for performance, then re-rendered sharp once it settles —
     // that's what caused the "blurry mid-fade, sharp after" look. Feeding
     // it an already-small image removes the need for that downsampling.
-    showLayer.style.backgroundImage = `url("${wsrvThumb(src, 500)}")`;
+    showLayer.style.backgroundImage = `url("${webpVariant(src, 500)}")`;
     showLayer.classList.add('active');
     hideLayer.classList.remove('active');
     onA = !onA;
@@ -991,10 +990,10 @@ function showGalleryImage(n){
   const src = IMG_PATHS.galleryExample(galleryFormatoKey, galleryFinalKeyForImages, n);
   const preload = new Image();
   preload.onload = () => {
-    galleryMainImg.src = src;
+    galleryMainImg.src = webpVariant(src);
     galleryMain.classList.add('has-image');
   };
-  preload.src = src;
+  preload.src = webpVariant(src);
   galleryThumbs.querySelectorAll('.gallery-thumb').forEach(th => {
     th.classList.toggle('active', Number(th.dataset.n) === n);
   });
@@ -1008,7 +1007,7 @@ function renderGalleryThumbsWindow(){
     thumb.className = 'gallery-thumb' + (n === galleryActiveNumber ? ' active' : '');
     thumb.dataset.n = n;
     thumb.addEventListener('click', () => showGalleryImage(n));
-    tryBgImage(thumb, wsrvThumb(IMG_PATHS.galleryExample(galleryFormatoKey, galleryFinalKeyForImages, n), 150));
+    tryBgImage(thumb, webpVariant(IMG_PATHS.galleryExample(galleryFormatoKey, galleryFinalKeyForImages, n), 150));
     galleryThumbs.appendChild(thumb);
   });
 
@@ -1913,7 +1912,7 @@ function renderPortfolio(){
 
     const img = document.createElement('img');
     img.className = 'portfolio-img';
-    img.src = wsrvThumb(p.thumbSrc, 350);
+    img.src = webpVariant(p.thumbSrc, 350);
     img.loading = 'lazy';
     img.decoding = 'async';
     img.alt = p.title[LANG];
@@ -1975,7 +1974,7 @@ function showLightboxItem(){
     lightboxPhoto.classList.add('loaded');
     fitLightboxToImage();
   };
-  lightboxPhoto.src = p.fullSrc; // already confirmed to exist during discovery
+  lightboxPhoto.src = webpVariant(p.fullSrc); // already confirmed to exist during discovery
 
   portfolioModalOverlay.classList.add('active');
 }
@@ -2142,7 +2141,7 @@ function renderReviews(){
     // in reviewsData — falls back to the "Avatar" placeholder circle if
     // that file hasn't been uploaded yet (same pattern as every other
     // tryBgImage() spot on the site).
-    tryBgImage(avatar, IMG_PATHS.reviewAvatar(i + 1));
+    tryBgImage(avatar, webpVariant(IMG_PATHS.reviewAvatar(i + 1)));
 
     const nameStars = document.createElement('div');
     nameStars.className = 'review-name-stars';
@@ -2200,9 +2199,9 @@ renderCommissionCards();
 discoverPortfolio();
 renderReviews();
 loadSlots();
-tryBgImage(document.getElementById('avatarPlaceholder'), IMG_PATHS.avatar());
-tryBgImage(document.getElementById('heroBanner'), IMG_PATHS.hero());
+tryBgImage(document.getElementById('avatarPlaceholder'), webpVariant(IMG_PATHS.avatar()));
+tryBgImage(document.getElementById('heroBanner'), webpVariant(IMG_PATHS.hero()));
 // Footer intentionally reuses the exact same hero image (see the FOOTER
 // comment block in style.css) rather than a separate asset — one picture,
 // cropped to the top for the header and to the bottom for the footer.
-tryBgImage(document.getElementById('footerBg'), IMG_PATHS.hero());
+tryBgImage(document.getElementById('footerBg'), webpVariant(IMG_PATHS.hero()));

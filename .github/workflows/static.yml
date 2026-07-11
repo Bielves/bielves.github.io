@@ -35,6 +35,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Generate WebP image variants
+        run: |
+          npm install sharp --no-save
+          node .github/scripts/generate-image-webp.mjs
       - name: Generate image manifest
         run: node .github/scripts/generate-image-manifest.mjs
       - name: Setup Pages
