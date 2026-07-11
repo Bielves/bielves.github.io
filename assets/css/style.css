@@ -1687,7 +1687,12 @@
        text pushed out entirely. flex-shrink:0 keeps cards at their
        natural size so the container scrolls instead of squashing them. */
     .card-list .card{flex-shrink:0;}
-    .card-img{min-height:190px;}
+    .card-img{min-height:230px;}
+    .card-body{padding:14px 16px;}
+    .card-title{font-size:1rem; margin:0 0 3px;}
+    .card-desc{font-size:0.76rem; line-height:1.35; margin-bottom:7px;}
+    .card-price{font-size:0.65rem;}
+    .card-price span{font-size:1.05rem;}
 
     /* Fixed 4-column portfolio grid on mobile instead of auto-fill, which
        was landing on 3 (sometimes fewer) columns on real phone widths. */
