@@ -2067,6 +2067,9 @@ function showLightboxItem(){
     lightboxPhoto.src = fullSrc;
     lightboxPhoto.classList.add('loaded');
     fitLightboxToImage(preloadFull.naturalWidth, preloadFull.naturalHeight);
+    reveal(); // safety net: if there was no usable placeholder, this is
+              // what actually opens the modal — see the no-placeholder
+              // branch below, which no longer reveals on its own.
   };
   preloadFull.src = fullSrc;
 
@@ -2088,7 +2091,10 @@ function showLightboxItem(){
   // since there's no network round-trip — means the box is already the
   // right shape on the very first visible frame instead of visibly
   // jumping into place.
+  let revealed = false;
   function reveal(){
+    if(revealed) return;
+    revealed = true;
     portfolioModalOverlay.classList.add('active');
   }
   if(p.placeholder){
@@ -2098,11 +2104,19 @@ function showLightboxItem(){
       fitLightboxToImage(probe.naturalWidth, probe.naturalHeight);
       reveal();
     };
-    probe.onerror = reveal; // corrupt/missing placeholder — don't hang, just open plainly
+    // Corrupt placeholder: don't reveal here — fall through to the
+    // preloadFull.onload safety net above, so the box still opens
+    // correctly sized off the real photo instead of at the wrong shape.
+    probe.onerror = () => { lightboxWrap.style.backgroundImage = ''; };
     probe.src = p.placeholder;
   } else {
+    // No placeholder entry for this image at all (e.g. missing from
+    // image-placeholders.json) — nothing to size the box with yet, so
+    // don't reveal until preloadFull.onload fires and sizes it off the
+    // real photo. Previously this called reveal() immediately, opening
+    // the box at its CSS-default shape (min-height:240px) and visibly
+    // snapping to the correct aspect ratio once the real image loaded.
     lightboxWrap.style.backgroundImage = '';
-    reveal();
   }
 }
 
