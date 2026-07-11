@@ -115,7 +115,7 @@ async function makePlaceholder(inputPath) {
 
 let count = 0;
 const failed = [];
-const placeholders = { commissions: {}, portfolio: {} };
+const placeholders = { commissions: {}, portfolio: {}, avatar: null, hero: null };
 
 // Runs fn(), and on failure logs the file + error and lets the caller
 // skip it instead of crashing the whole build. Returns true on success.
@@ -170,6 +170,10 @@ for (const file of SINGLE_FILES) {
   if (existsSync(file)) {
     const ok = await tryProcess(file, async () => {
       await writeFull(file);
+      // Only avatar.jpg is in SINGLE_FILES right now — if that ever
+      // changes, this blindly assigns to placeholders.avatar for every
+      // entry, so keep this loop avatar-only or revisit this line.
+      placeholders.avatar = await makePlaceholder(file);
     });
     if (ok) count++;
   }
@@ -179,6 +183,7 @@ if (existsSync(HERO_FILE)) {
   const ok = await tryProcess(HERO_FILE, async () => {
     await writeFull(HERO_FILE);
     await writeHeroWidths(HERO_FILE);
+    placeholders.hero = await makePlaceholder(HERO_FILE);
   });
   if (ok) count++;
 }

@@ -337,7 +337,22 @@ function heroWebpVariant(rawPath){
 // placeholder pattern + label text stay put. This means the site keeps
 // working with zero images uploaded — just drop files into the folders
 // above later and they'll pick up automatically on next load.
-function tryBgImage(el, src){
+//
+// placeholderPromise (optional) resolves to a blurred LQIP data URI (or
+// null/undefined). It's raced against the real image rather than
+// awaited up front — the real `src` load starts immediately either way,
+// so a slow placeholders.json fetch never delays the real photo. If the
+// placeholder resolves first, it paints instantly as a blur-up preview;
+// the has-image guard stops it from ever clobbering an already-loaded
+// real photo if the race goes the other way.
+function tryBgImage(el, src, placeholderPromise){
+  if(placeholderPromise){
+    placeholderPromise.then(ph => {
+      if(ph && !el.classList.contains('has-image')){
+        el.style.backgroundImage = `url("${ph}")`;
+      }
+    });
+  }
   const img = new Image();
   img.onload = () => {
     el.style.backgroundImage = `url("${src}")`;
@@ -409,7 +424,26 @@ function startCardImageCycle(container, formatoKey){
     // animation for performance, then re-rendered sharp once it settles —
     // that's what caused the "blurry mid-fade, sharp after" look. Feeding
     // it an already-small image removes the need for that downsampling.
-    showLayer.style.backgroundImage = `url("${webpVariant(src, 500)}")`;
+    const fullSrc = webpVariant(src, 500);
+    // Blur-up: paint the tiny inlined placeholder the instant this turn
+    // fires (no network wait), so the crossfade brings in a blurred
+    // preview immediately instead of nothing — then hard-swap to the
+    // real photo the moment it's actually decoded. Falls back to the old
+    // behavior (set fullSrc directly) if this image has no placeholder
+    // entry yet, or IMAGE_PLACEHOLDERS hasn't resolved yet.
+    const ph = placeholderForGallery(IMAGE_PLACEHOLDERS, formatoKey, combo.finalKey, combo.n);
+    showLayer.style.backgroundImage = `url("${ph || fullSrc}")`;
+    if(ph){
+      const img = new Image();
+      img.onload = () => {
+        // Guard against a slow load resolving after this layer has
+        // already moved on to a later turn's image.
+        if(showLayer.style.backgroundImage.includes(ph)){
+          showLayer.style.backgroundImage = `url("${fullSrc}")`;
+        }
+      };
+      img.src = fullSrc;
+    }
     showLayer.classList.add('active');
     hideLayer.classList.remove('active');
     onA = !onA;
@@ -2357,9 +2391,11 @@ renderCommissionCards();
 discoverPortfolio();
 renderReviews();
 loadSlots();
-tryBgImage(document.getElementById('avatarPlaceholder'), webpVariant(IMG_PATHS.avatar()));
-tryBgImage(document.getElementById('heroBanner'), heroWebpVariant(IMG_PATHS.hero()));
+const AVATAR_PLACEHOLDER_PROMISE = IMAGE_PLACEHOLDERS_PROMISE.then(p => p && p.avatar);
+const HERO_PLACEHOLDER_PROMISE = IMAGE_PLACEHOLDERS_PROMISE.then(p => p && p.hero);
+tryBgImage(document.getElementById('avatarPlaceholder'), webpVariant(IMG_PATHS.avatar()), AVATAR_PLACEHOLDER_PROMISE);
+tryBgImage(document.getElementById('heroBanner'), heroWebpVariant(IMG_PATHS.hero()), HERO_PLACEHOLDER_PROMISE);
 // Footer intentionally reuses the exact same hero image (see the FOOTER
 // comment block in style.css) rather than a separate asset — one picture,
 // cropped to the top for the header and to the bottom for the footer.
-tryBgImage(document.getElementById('footerBg'), heroWebpVariant(IMG_PATHS.hero()));
+tryBgImage(document.getElementById('footerBg'), heroWebpVariant(IMG_PATHS.hero()), HERO_PLACEHOLDER_PROMISE);
