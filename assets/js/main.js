@@ -206,12 +206,11 @@ let LANG = 'en';
 //     BOTH in the config modal's gallery AND cycled on the front card
 //     (which shows image 1 from each finalização tier) — one set of files
 //     covers both places, no separate "cards" folder to keep in sync.
-//   images/portfolio/thumbs/<n>.jpg                         — grid thumbnails (small/optimized)
-//   images/portfolio/fulls/<n>.jpg                          — lightbox full-size images
+//   images/portfolio/<n>.jpg                                — one file per
+//     piece, used both as the grid thumbnail (resized on the fly via wsrv,
+//     see WSRV_ORIGIN/wsrvThumb below) and as the lightbox full image.
 //   images/avatar/avatar.jpg                                — header avatar
 //   images/hero/hero.jpg                                    — header background art
-// Thumbs/fulls are split so the grid only ever downloads small files; the
-// lightbox fetches the full-size image on demand when a piece is opened.
 const IMG_BASE = 'images/';
 const IMG_PATHS = {
   galleryExample: (formatoKey, finalKey, n) => `${IMG_BASE}commissions/gallery/${formatoKey}/${finalKey}/${n}.jpg`,
@@ -228,6 +227,28 @@ const IMG_PATHS = {
 };
 const CARD_CYCLE_INTERVAL_MS = 4500; // dwell time per image before crossfading
 const CARD_CYCLE_FADE_MS = 1200;     // crossfade duration — kept slow/gentle on purpose
+
+// ==================== IMAGE RESIZING (wsrv.nl) ====================
+// Generates a resized/compressed URL for a given source image on demand —
+// no separate thumbnail files to create or maintain. wsrv.nl fetches the
+// original from the live site, resizes+caches it at its edge, and returns
+// the smaller version. Used ONLY for display srcs (e.g. the portfolio grid
+// below); existence probing (probeImage/probeNumberedFolder further down)
+// always checks the raw original path, never the wsrv URL — wsrv doesn't
+// reliably 404 the way the raw file does, so routing probes through it
+// could make missing images look like they exist.
+// IMPORTANT: wsrv can only fetch images that are actually live on the
+// public internet, so this can't work from a local file:// preview or a
+// localhost dev server — those cases fall back to the original, full-size
+// image automatically.
+const SITE_ORIGIN = 'bielves.github.io';
+const IS_LOCAL_PREVIEW = ['', 'localhost', '127.0.0.1'].includes(location.hostname);
+
+function wsrvThumb(rawPath, widthPx){
+  if(IS_LOCAL_PREVIEW) return rawPath;
+  const fullUrl = `https://${SITE_ORIGIN}/${rawPath}`;
+  return `https://wsrv.nl/?url=${encodeURIComponent(fullUrl)}&w=${widthPx}&fit=cover&output=webp&q=80`;
+}
 
 // Tries to load `src` in the background; only swaps the element's
 // background-image if the file actually exists, otherwise the CSS
@@ -1550,14 +1571,21 @@ async function probeImage(src){
   }
 }
 
-// Sequentially probes numbered files 1.jpg, 2.jpg, ... via thumbSrcFn(n) /
-// fullSrcFn(n), stopping after GAP_TOLERANCE consecutive misses (or maxN).
+// Probes numbered files 1.jpg, 2.jpg, ... via thumbSrcFn(n) / fullSrcFn(n)
+// — all candidates up to maxN are probed IN PARALLEL (HEAD requests are
+// cheap with no bytes to transfer, so firing them all at once is fine),
+// then walked in order to keep only the leading contiguous run, allowing
+// up to GAP_TOLERANCE consecutive gaps before stopping. This gives the
+// same "stop after real content ends" result as probing one at a time,
+// just without paying a network round-trip's wait for every single file.
 async function probeNumberedFolder(thumbSrcFn, fullSrcFn, maxN, makeMeta){
+  const exists = await Promise.all(
+    Array.from({ length: maxN }, (_, i) => probeImage(thumbSrcFn(i + 1)))
+  );
   const items = [];
   let misses = 0;
   for(let n = 1; n <= maxN; n++){
-    const exists = await probeImage(thumbSrcFn(n));
-    if(!exists){
+    if(!exists[n - 1]){
       misses++;
       if(misses >= GAP_TOLERANCE) break;
       continue;
@@ -1575,7 +1603,7 @@ async function probeNumberedFolder(thumbSrcFn, fullSrcFn, maxN, makeMeta){
 async function discoverPortfolio(){
   // 1) Manually-curated set — always leads the ALL tab, in file order.
   // Untagged (category: null), so these never show under a category tab.
-  const manual = await probeNumberedFolder(
+  const manualPromise = probeNumberedFolder(
     IMG_PATHS.portfolioImage,
     IMG_PATHS.portfolioImage,
     PORTFOLIO_MAX,
@@ -1588,7 +1616,9 @@ async function discoverPortfolio(){
 
   // 2) Auto-pull every commission gallery image into its matching tab —
   // reuses images already uploaded for the commission menu, no re-upload.
-  // This is the only source that feeds the category tabs.
+  // This is the only source that feeds the category tabs. Kicked off
+  // alongside (1) above rather than after it, so the manual set doesn't
+  // block the gallery probes (or vice versa) from starting.
   const galleryProbes = [];
   Object.keys(DATA).forEach((formatoKey) => {
     const finalizacoes = DATA[formatoKey].finalizacoes || {};
@@ -1597,7 +1627,7 @@ async function discoverPortfolio(){
       if(cat) galleryProbes.push({ formatoKey, finalKey, cat });
     });
   });
-  const galleryResults = await Promise.all(galleryProbes.map(async ({ formatoKey, finalKey, cat }) => {
+  const galleryResultsPromise = Promise.all(galleryProbes.map(async ({ formatoKey, finalKey, cat }) => {
     const finalDesc = (DATA[formatoKey].finalizacoes[finalKey] || {}).desc || PLACEHOLDER_DESC;
     const items = await probeNumberedFolder(
       (n) => IMG_PATHS.galleryExample(formatoKey, finalKey, n),
@@ -1611,6 +1641,8 @@ async function discoverPortfolio(){
     );
     return { cat, items };
   }));
+
+  const [manual, galleryResults] = await Promise.all([manualPromise, galleryResultsPromise]);
 
   // Assemble final order: manual uploads -> rendered -> steamcapsules ->
   // flatcell -> sketchline -> others (auto-pulled commission gallery images
@@ -1675,7 +1707,7 @@ function renderPortfolio(){
 
     const img = document.createElement('img');
     img.className = 'portfolio-img';
-    img.src = p.thumbSrc;
+    img.src = wsrvThumb(p.thumbSrc, 500);
     img.loading = 'lazy';
     img.decoding = 'async';
     img.alt = p.title[LANG];
