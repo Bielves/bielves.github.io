@@ -247,7 +247,7 @@ const IS_LOCAL_PREVIEW = ['', 'localhost', '127.0.0.1'].includes(location.hostna
 function wsrvThumb(rawPath, widthPx){
   if(IS_LOCAL_PREVIEW) return rawPath;
   const fullUrl = `https://${SITE_ORIGIN}/${rawPath}`;
-  return `https://wsrv.nl/?url=${encodeURIComponent(fullUrl)}&w=${widthPx}&fit=cover&output=webp&q=80`;
+  return `https://wsrv.nl/?url=${encodeURIComponent(fullUrl)}&w=${widthPx}&fit=cover&output=webp&q=70`;
 }
 
 // Tries to load `src` in the background; only swaps the element's
@@ -1712,7 +1712,7 @@ function renderPortfolio(){
 
     const img = document.createElement('img');
     img.className = 'portfolio-img';
-    img.src = wsrvThumb(p.thumbSrc, 500);
+    img.src = wsrvThumb(p.thumbSrc, 350);
     img.loading = 'lazy';
     img.decoding = 'async';
     img.alt = p.title[LANG];
