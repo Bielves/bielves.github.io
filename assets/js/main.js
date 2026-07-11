@@ -1879,6 +1879,7 @@ let portfolioReady = false;
 let activePortfolioTab = 'all';
 let currentLightboxList = [];
 let lightboxIndex = 0;
+let lightboxHistoryPushed = false;
 
 // ==================== PORTFOLIO CAPTIONS (captions.md) ====================
 // Optional per-image title/description override that lives right next to
@@ -2085,6 +2086,8 @@ let dragMoved = false;
 function openLightbox(item, list){
   currentLightboxList = list;
   lightboxIndex = list.indexOf(item);
+  history.pushState({ lightbox: true }, '');
+  lightboxHistoryPushed = true;
   showLightboxItem();
 }
 
@@ -2240,11 +2243,25 @@ function clampPan(){
   panY = Math.max(-maxPanY, Math.min(maxPanY, panY));
 }
 
-function closeLightbox(){
+function closeLightbox(fromPopState){
   portfolioModalOverlay.classList.remove('active');
   lightboxPhoto.classList.remove('zoomed', 'dragging');
   resetLightboxPan();
+  if(lightboxHistoryPushed){
+    lightboxHistoryPushed = false;
+    // Closed via the X / overlay / Escape — not via the back button —
+    // so we still owe the browser a "back" to clean up the history entry
+    // we pushed on open. This itself fires popstate, but by then the
+    // overlay is already inactive so the listener below just no-ops.
+    if(!fromPopState) history.back();
+  }
 }
+
+// Mobile back button / gesture: closes the lightbox instead of leaving
+// the page, since opening it pushed a history entry above.
+window.addEventListener('popstate', () => {
+  if(portfolioModalOverlay.classList.contains('active')) closeLightbox(true);
+});
 
 // Click toggles zoom in/out — but not right after a drag, so releasing a
 // pan gesture doesn't also flip the zoom state.

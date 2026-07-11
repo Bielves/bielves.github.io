@@ -1316,9 +1316,6 @@
     padding:0 20px;
     box-sizing:border-box;
   }
-  @media (max-width:460px){
-    .portfolio-grid{grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); padding:0 10px;}
-  }
 
   /* Fixed aspect-ratio cells (rather than each item's natural height) so
      rows fill left-to-right and stay aligned across columns, regardless of
@@ -1638,6 +1635,7 @@
 
   /* ---------- MOBILE POLISH ---------- */
   @media (max-width:640px){
+    html{font-size:18px;}
     .hero{height:auto; min-height:220px; padding-top:54px;}
     .hero-inner{
       flex-wrap:wrap;
@@ -1649,15 +1647,19 @@
     .socials{flex:1 1 100%;}
     .lang-toggle{top:10px; right:12px;}
     .theme-toggle-left{top:10px; left:12px;}
-    .lang-btn{width:30px; height:30px; font-size:0.95rem;}
-    .theme-btn{width:34px; height:34px;}
-    .theme-icon.moon{ font-size:1.1rem; }
-    .theme-icon.sun{ font-size:1.25rem; }
-    .avatar-ring{width:56px; height:56px;}
-    .avatar-ring .avatar{inset:2px;}
-    .artist-name{font-size:1.1rem;}
-    .speech-bubble{max-width:180px; font-size:0.72rem;}
-    nav button{padding:12px 6px; font-size:0.72rem;}
+    .lang-btn{width:40px; height:40px; font-size:1.3rem;}
+    .theme-btn{width:44px; height:44px;}
+    .theme-icon.moon{ font-size:1.5rem; }
+    .theme-icon.sun{ font-size:1.7rem; }
+    .avatar-ring{width:92px; height:92px;}
+    .avatar-ring .avatar{inset:3px;}
+    .socials{gap:10px;}
+    .social-btn{width:42px; height:42px;}
+    .social-btn i{font-size:1.15rem;}
+    .cara-badge{width:19px; height:19px; font-size:0.85rem;}
+    .artist-name{font-size:1.3rem;}
+    .speech-bubble{max-width:200px; font-size:0.82rem;}
+    nav button{padding:14px 6px; font-size:0.85rem;}
 
     .modal-body{padding:18px;}
     .config-col{padding:18px; padding-top:44px;}
@@ -1669,11 +1671,42 @@
     .pay-icons{flex-wrap:wrap;}
 
     h1{font-size:1.6rem;}
+
+    /* Commission cards: show ~4 at a time in their own scrollable strip
+       instead of stretching the whole page — scroll the strip, not the
+       page, to see the rest. */
+    .card-list{
+      max-height:74vh;
+      overflow-y:auto;
+      overscroll-behavior:contain;
+      padding-right:4px;
+    }
+    /* Without this, flex-direction:column + max-height on the parent
+       makes each .card SHRINK to fit instead of the list scrolling —
+       that's what was crushing every card into a thin sliver with the
+       text pushed out entirely. flex-shrink:0 keeps cards at their
+       natural size so the container scrolls instead of squashing them. */
+    .card-list .card{flex-shrink:0;}
+    .card-img{min-height:190px;}
+
+    /* Fixed 4-column portfolio grid on mobile instead of auto-fill, which
+       was landing on 3 (sometimes fewer) columns on real phone widths. */
+    .portfolio-grid{grid-template-columns:repeat(3, 1fr); padding:0 8px; gap:3px;}
+
+    /* Reviews */
+    .review-card{padding:16px; border-radius:16px;}
+    .review-avatar{width:40px; height:40px; font-size:0.7rem;}
+    .review-name{font-size:1.05rem;}
+    .stars{font-size:1.5rem;}
+    .review-text{font-size:1.05rem; line-height:1.55;}
+
+    /* Modals: less side padding so the lightbox photo can actually fill
+       the screen instead of floating in a big margin. */
+    .modal-overlay{padding:8px;}
+    .lightbox-box{max-width:98vw; max-height:97vh;}
   }
   @media (max-width:380px){
     .gallery-thumbs{grid-template-columns:repeat(3, 1fr);}
-    .card-title{font-size:1rem;}
-    .modal-price-value{font-size:1.5rem;}
     .modal-price-row{flex-wrap:wrap; row-gap:10px;}
     .pages-row{flex-wrap:wrap; row-gap:8px;}
   }
