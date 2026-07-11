@@ -838,10 +838,15 @@ function setLang(lang){
 
 // ==================== THEME TOGGLE ====================
 const themeToggle = document.getElementById('themeToggle');
-themeToggle.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+function setThemeIcon(isDark){
+  themeToggle.innerHTML = isDark
+    ? '<span class="theme-icon sun">☀️</span>'
+    : '<span class="theme-icon moon">🌙</span>';
+}
+setThemeIcon(document.body.classList.contains('dark'));
 themeToggle.addEventListener('click', () => {
   const isDark = document.body.classList.toggle('dark');
-  themeToggle.textContent = isDark ? '☀️' : '🌙';
+  setThemeIcon(isDark);
   localStorage.setItem('theme', isDark ? 'dark' : 'light');
 });
 

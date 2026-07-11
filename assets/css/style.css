@@ -40,6 +40,7 @@
     --paper:#f0ede6;
     --line:#1a1a1a;
     --border-color: rgba(26,26,26,0.16);
+    --avatar-border: rgba(26,26,26,0.4);
     --modal-border: rgba(26,26,26,0.32);
     --accent:#b8452f;
     --muted:#7a7568;
@@ -53,6 +54,7 @@
     --paper:#15181b;
     --line:#eef2f1;
     --border-color: rgba(238,242,241,0.14);
+    --avatar-border: rgba(238,242,241,0.4);
     --modal-border: rgba(238,242,241,0.28);
     --accent:#3aa88f;
     --muted:#93a3a0;
@@ -166,7 +168,6 @@
     border-radius:50%;
     border:2px solid var(--border-color);
     background:var(--panel);
-    font-size:1.3rem;
     display:flex;
     align-items:center;
     justify-content:center;
@@ -174,6 +175,17 @@
     padding:0;
   }
   .theme-btn:hover{border-color:var(--accent);}
+  .theme-icon{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    line-height:1;
+  }
+  .theme-icon.moon{ font-size:1.3rem; }
+  .theme-icon.sun{
+    font-size:1.5rem;
+    transform:translateY(0.5px);
+  }
   .hero-inner{
     position:relative;
     width:100%;
@@ -189,47 +201,42 @@
     gap:14px;
     position:relative;
   }
-  /* Slow-rotating gradient ring around the avatar. Uses the classic
-     "padding as border" trick: the outer wrapper's background is the
-     spinning gradient, and its padding reveals a thin ring of it around
-     the inner avatar circle. No masking involved, so it can't silently
-     fail and hide the photo — worst case on an old browser is just no
-     ring, the avatar itself is unaffected either way. */
+  /* Slow-rotating gradient ring around the avatar. The gradient lives on
+     a ::before pseudo-element behind the avatar, not on .avatar-ring
+     itself — rotating the wrapper would rotate the avatar photo along
+     with it, since the photo is a normal child inside that box. Keeping
+     the spin on a separate layer means only the ring turns; the avatar
+     stays put. */
   .avatar-ring{
     width:132px; height:132px;
     border-radius:50%;
-    padding:3px;
+    position:relative;
     flex-shrink:0;
+    transition:width 0.25s ease, height 0.25s ease;
+  }
+  .avatar-ring::before{
+    content:'';
+    position:absolute;
+    inset:0;
+    border-radius:50%;
     background:conic-gradient(from 0deg, var(--accent), transparent 35%, transparent 65%, var(--accent));
     animation:avatarRingSpin 7s linear infinite, avatarRingPulse 3s ease-in-out infinite;
-    transition:width 0.25s ease, height 0.25s ease;
+    transition:inset 0.25s ease;
+  }
+  .avatar-ring:hover::before{
+    inset:-4px;
   }
   .avatar-ring:hover{
     width:140px; height:140px;
   }
   .avatar{
-    width:100%; height:100%;
+    position:absolute;
+    inset:3px;
     border-radius:50%;
     background:var(--panel);
     background-size:cover;
     background-position:center;
-    border:2px solid var(--border-color);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-family:'Ubuntu', -apple-system, sans-serif;
-    font-size:0.65rem;
-    color:var(--muted);
-    text-align:center;
-    flex-shrink:0;
-    position:relative;
-    transition:border-width 0.25s ease, border-color 0.25s ease;
-  }
-  .avatar-ring:hover .avatar{
-    border-width:3px;
-    border-color:var(--accent);
-  }
-  @keyframes avatarRingSpin{
+    border:2px solid var(--avatar-border);
     to{ transform:rotate(360deg); }
   }
   /* Subtle breathing effect — opacity only (rotation handles transform
@@ -240,9 +247,7 @@
     0%, 100%{ opacity:1; }
     50%{ opacity:0.6; }
   }
-  @media (prefers-reduced-motion: reduce){
-    .avatar-ring{ animation:none; }
-  }
+
   .speech-bubble{
     position:absolute;
     bottom:calc(100% + 10px);
@@ -1028,9 +1033,7 @@
     0%, 100%{ opacity:1; }
     50%{ opacity:0.5; }
   }
-  @media (prefers-reduced-motion: reduce){
-    .dot, .modal-slots-status .dot{ animation:none; }
-  }
+
   .no-slots-box{
     max-width:400px;
     text-align:center;
@@ -1647,8 +1650,11 @@
     .lang-toggle{top:10px; right:12px;}
     .theme-toggle-left{top:10px; left:12px;}
     .lang-btn{width:30px; height:30px; font-size:0.95rem;}
-    .theme-btn{width:34px; height:34px; font-size:1.1rem;}
-    .avatar-ring{width:56px; height:56px; padding:2px;}
+    .theme-btn{width:34px; height:34px;}
+    .theme-icon.moon{ font-size:1.1rem; }
+    .theme-icon.sun{ font-size:1.25rem; }
+    .avatar-ring{width:56px; height:56px;}
+    .avatar-ring .avatar{inset:2px;}
     .artist-name{font-size:1.1rem;}
     .speech-bubble{max-width:180px; font-size:0.72rem;}
     nav button{padding:12px 6px; font-size:0.72rem;}
