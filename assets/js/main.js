@@ -776,9 +776,32 @@ let navH = 0;
 // padding stayed pinned to the full (hero+nav) height forever, leaving a
 // hero-sized gap of empty space above the content whenever the hero was
 // scrolled out of view.
+//
+// This used to transition padding-top directly, which is a layout property —
+// the browser had to reflow #pageContent and everything below it (main,
+// footer, portfolio grid, ...) on every single animation frame, tanking CLS.
+// Fixed with a FLIP: jump padding-top to its final value in one instant
+// reflow, cancel the visual jump with an equal-and-opposite transform, then
+// let the transform animate back to 0 on the compositor. Same look, no
+// per-frame layout work.
 function syncPageContentPadding(){
   const hidden = topWrap.classList.contains('hide-hero');
-  pageContent.style.paddingTop = (hidden ? navH : heroH + navH) + 'px';
+  const newPadding = hidden ? navH : heroH + navH;
+  const oldPadding = parseFloat(getComputedStyle(pageContent).paddingTop) || newPadding;
+  const diff = oldPadding - newPadding;
+
+  pageContent.style.transition = 'none';
+  pageContent.style.paddingTop = newPadding + 'px';
+  pageContent.style.transform = diff ? `translateY(${diff}px)` : '';
+
+  if (diff){
+    // Force layout so the jump+compensation above is committed before we
+    // switch the transition back on, otherwise the browser coalesces this
+    // with the next line and just animates padding-top after all.
+    void pageContent.offsetHeight;
+    pageContent.style.transition = 'transform 0.35s ease';
+    pageContent.style.transform = 'translateY(0)';
+  }
 }
 
 function setHeroHeightVar(){

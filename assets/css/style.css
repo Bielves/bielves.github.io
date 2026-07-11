@@ -330,7 +330,7 @@
 
   #pageContent{
     padding-top:340px;
-    transition:padding-top 0.35s ease;
+    will-change:transform;
   }
   main{
     max-width:920px;
