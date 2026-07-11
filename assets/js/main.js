@@ -965,7 +965,7 @@ function renderGalleryThumbsWindow(){
     thumb.className = 'gallery-thumb' + (n === galleryActiveNumber ? ' active' : '');
     thumb.dataset.n = n;
     thumb.addEventListener('click', () => showGalleryImage(n));
-    tryBgImage(thumb, IMG_PATHS.galleryExample(galleryFormatoKey, galleryFinalKeyForImages, n));
+    tryBgImage(thumb, wsrvThumb(IMG_PATHS.galleryExample(galleryFormatoKey, galleryFinalKeyForImages, n), 150));
     galleryThumbs.appendChild(thumb);
   });
 
