@@ -926,18 +926,6 @@ function handleHeroScroll(){
   const y = window.scrollY;
   const currentHeroH = document.querySelector('.hero').offsetHeight;
 
-  // On the commissions tab the card list scrolls in its own internal
-  // strip (see .card-list max-height on mobile) rather than the page
-  // itself, which leaves very little real scroll range on the page.
-  // With so little range, scrollY bounces around near 0 during a normal
-  // scroll gesture and was crossing the show/hide thresholds back and
-  // forth on every frame — the hero would flicker and appear to get
-  // "stuck" mid-animation. If there isn't enough scrollable page height
-  // to cleanly clear both thresholds, skip the collapse entirely and
-  // leave the hero exactly as it is.
-  const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-  if(maxScroll < currentHeroH * 0.6) return;
-
   // Two separate thresholds instead of one shared 50% line — a scroll
   // position sitting right at the old boundary caused the header to
   // hide/show on every tiny scroll wobble, firing a real layout shift
