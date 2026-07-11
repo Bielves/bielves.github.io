@@ -258,6 +258,35 @@ const IMAGE_MANIFEST_PROMISE = fetch('image-manifest.json', { cache: 'no-store' 
   .then(res => res.ok ? res.json() : null)
   .catch(() => null);
 
+// Tiny blurred LQIP data URIs for portfolio + gallery images, written by
+// generate-image-webp.mjs — same shape as the manifest above.
+const IMAGE_PLACEHOLDERS_PROMISE = fetch('image-placeholders.json', { cache: 'no-store' })
+  .then(res => res.ok ? res.json() : null)
+  .catch(() => null);
+
+// Also cached in a plain variable for the one spot that needs it
+// synchronously (renderGalleryThumbsWindow) — reads before this resolves
+// just get no placeholder, degrading to the old flat-box look, not a
+// broken state.
+let IMAGE_PLACEHOLDERS = null;
+IMAGE_PLACEHOLDERS_PROMISE.then(data => { IMAGE_PLACEHOLDERS = data; });
+
+// Looks up the blurred placeholder for one commissions/gallery/<formatoKey>/
+// <finalKey>/<n>.jpg image out of a resolved placeholders object, or null.
+function placeholderForGallery(placeholders, formatoKey, finalKey, n){
+  if(!placeholders) return null;
+  const forFormato = placeholders.commissions[formatoKey];
+  const forFinal = forFormato && forFormato[finalKey];
+  return (forFinal && forFinal[n]) || null;
+}
+
+// Looks up the blurred placeholder for one images/portfolio/<n>.jpg image
+// out of a resolved placeholders object, or null.
+function placeholderForPortfolio(placeholders, n){
+  if(!placeholders) return null;
+  return placeholders.portfolio[n] || null;
+}
+
 // Looks up { numbers, captions } for one commissions/gallery/<formatoKey>/
 // <finalKey>/ folder. Always returns a safe empty shape — never throws or
 // returns undefined — so callers don't need to guard against a missing
@@ -1007,6 +1036,8 @@ function renderGalleryThumbsWindow(){
     thumb.className = 'gallery-thumb' + (n === galleryActiveNumber ? ' active' : '');
     thumb.dataset.n = n;
     thumb.addEventListener('click', () => showGalleryImage(n));
+    const ph = placeholderForGallery(IMAGE_PLACEHOLDERS, galleryFormatoKey, galleryFinalKeyForImages, n);
+    if(ph) thumb.style.backgroundImage = `url("${ph}")`;
     tryBgImage(thumb, webpVariant(IMG_PATHS.galleryExample(galleryFormatoKey, galleryFinalKeyForImages, n), 150));
     galleryThumbs.appendChild(thumb);
   });
@@ -1815,6 +1846,7 @@ function resolveCaption(captions, n, fallbackTitle, fallbackDesc){
 
 async function discoverPortfolio(){
   const manifest = await IMAGE_MANIFEST_PROMISE;
+  const placeholders = await IMAGE_PLACEHOLDERS_PROMISE;
 
   // 1) Manually-curated set — always leads the ALL tab, in file order.
   // Untagged (category: null), so these never show under a category tab.
@@ -1824,6 +1856,7 @@ async function discoverPortfolio(){
   const manual = portfolioData.numbers.map(n => ({
     thumbSrc: IMG_PATHS.portfolioImage(n),
     fullSrc: IMG_PATHS.portfolioImage(n),
+    placeholder: placeholderForPortfolio(placeholders, n),
     category: null,
     ...resolveCaption(portfolioData.captions, n, { pt: `Trabalho ${n}`, en: `Piece ${n}` }, PLACEHOLDER_DESC)
   }));
@@ -1846,6 +1879,7 @@ async function discoverPortfolio(){
       const items = folder.numbers.map(n => ({
         thumbSrc: IMG_PATHS.galleryExample(formatoKey, finalKey, n),
         fullSrc: IMG_PATHS.galleryExample(formatoKey, finalKey, n),
+        placeholder: placeholderForGallery(placeholders, formatoKey, finalKey, n),
         category: cat,
         ...resolveCaption(folder.captions, n, DATA[formatoKey].label, finalDesc)
       }));
@@ -1909,6 +1943,7 @@ function renderPortfolio(){
   list.forEach((p) => {
     const item = document.createElement('div');
     item.className = 'portfolio-item';
+    if(p.placeholder) item.style.setProperty('--ph', `url("${p.placeholder}")`);
 
     const img = document.createElement('img');
     img.className = 'portfolio-img';
@@ -1916,6 +1951,8 @@ function renderPortfolio(){
     img.loading = 'lazy';
     img.decoding = 'async';
     img.alt = p.title[LANG];
+    const markLoaded = () => img.classList.add('loaded');
+    if(img.complete) markLoaded(); else img.addEventListener('load', markLoaded);
     item.appendChild(img);
 
     const hotzone = document.createElement('div');
