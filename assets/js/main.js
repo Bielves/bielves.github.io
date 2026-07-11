@@ -850,7 +850,16 @@ let bubbleHideTimer = null;
 window.addEventListener('scroll', () => {
   const y = window.scrollY;
   const heroH = document.querySelector('.hero').offsetHeight;
-  const nearTop = y < heroH * 0.5;
+  // Two separate thresholds instead of one shared 50% line — a scroll
+  // position sitting right at the old boundary caused the header to
+  // hide/show on every tiny scroll wobble, firing a real layout shift
+  // (fixed-element transform) each time. Reveal only above 20% of hero
+  // height, hide only below 60%; the gap between them is dead zone where
+  // whatever state we're already in just stays put.
+  const showThreshold = heroH * 0.2;
+  const hideThreshold = heroH * 0.6;
+  const isHidden = topWrap.classList.contains('hide-hero');
+  const nearTop = isHidden ? y < showThreshold : y < hideThreshold;
 
   if(nearTop){
     // Only reveal the header once we're actually back near the top of the
