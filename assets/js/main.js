@@ -1047,6 +1047,22 @@ function showGalleryImage(n){
   // nothing.
   const ph = placeholderForGallery(IMAGE_PLACEHOLDERS, galleryFormatoKey, galleryFinalKeyForImages, n);
   galleryMain.style.backgroundImage = ph ? `url("${ph}")` : '';
+  // The placeholder is a tiny render of the SAME source image, so its
+  // aspect ratio already matches the real photo — probing it here and
+  // setting aspect-ratio on the box means .gallery-main is the correct
+  // shape (portrait stays tall, landscape stays wide) from the first
+  // paint, instead of sitting at whatever its CSS min-height gives it
+  // and then visibly snapping to the right shape once the real <img>
+  // loads and the flex box grows to fit it.
+  if(ph){
+    const probe = new Image();
+    probe.onload = () => {
+      galleryMain.style.aspectRatio = `${probe.naturalWidth} / ${probe.naturalHeight}`;
+    };
+    probe.src = ph;
+  } else {
+    galleryMain.style.aspectRatio = '';
+  }
   const src = IMG_PATHS.galleryExample(galleryFormatoKey, galleryFinalKeyForImages, n);
   const preload = new Image();
   preload.onload = () => {
