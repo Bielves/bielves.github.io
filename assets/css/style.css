@@ -1,3 +1,40 @@
+  /* ---------- SELF-HOSTED FONT (Ubuntu) ----------
+     Replaces the Google Fonts CDN link (removed from index.html) — same
+     four weights, served from assets/webfonts/ instead of fonts.gstatic.com.
+     font-display:optional means the browser gets ~100ms to have the font
+     ready; if it's not, the page commits to the fallback stack for this
+     pageview and never swaps mid-read. No swap = no font-driven layout
+     shift, at the cost of occasionally rendering in the fallback font on a
+     slow/cold connection instead of Ubuntu. */
+  @font-face{
+    font-family:'Ubuntu';
+    src:url('../webfonts/ubuntu-300.woff2') format('woff2');
+    font-weight:300;
+    font-style:normal;
+    font-display:optional;
+  }
+  @font-face{
+    font-family:'Ubuntu';
+    src:url('../webfonts/ubuntu-400.woff2') format('woff2');
+    font-weight:400;
+    font-style:normal;
+    font-display:optional;
+  }
+  @font-face{
+    font-family:'Ubuntu';
+    src:url('../webfonts/ubuntu-500.woff2') format('woff2');
+    font-weight:500;
+    font-style:normal;
+    font-display:optional;
+  }
+  @font-face{
+    font-family:'Ubuntu';
+    src:url('../webfonts/ubuntu-700.woff2') format('woff2');
+    font-weight:700;
+    font-style:normal;
+    font-display:optional;
+  }
+
   :root{
     --ink:#1a1a1a;
     --paper:#f0ede6;
