@@ -215,17 +215,14 @@ let LANG = 'en';
 const IMG_BASE = 'images/';
 const IMG_PATHS = {
   galleryExample: (formatoKey, finalKey, n) => `${IMG_BASE}commissions/gallery/${formatoKey}/${finalKey}/${n}.jpg`,
-  // Curated "best of" set — always leads the Portfolio's ALL tab, in this
-  // exact numeric order. Drop up to 10 files in here to control what shows
-  // first; renumber to reorder.
-  portfolioFeaturedThumb: (n) => `${IMG_BASE}portfolio/featured/thumbs/${n}.jpg`,
-  portfolioFeaturedFull:  (n) => `${IMG_BASE}portfolio/featured/fulls/${n}.jpg`,
-  // Per-tab portfolio folders — category is one of PORTFOLIO_CATEGORIES
-  // below (rendered / steamcapsules / flatcell / sketchline / others).
-  // Just drop numbered files in (1.jpg, 2.jpg, ...); new ones are picked
-  // up automatically on next load.
-  portfolioCategoryThumb: (category, n) => `${IMG_BASE}portfolio/${category}/thumbs/${n}.jpg`,
-  portfolioCategoryFull:  (category, n) => `${IMG_BASE}portfolio/${category}/fulls/${n}.jpg`,
+  // Manually-curated portfolio set — always leads the ALL tab, in this
+  // exact numeric order. Drop numbered files in (1.jpg, 2.jpg, ...); new
+  // ones are picked up automatically on next load. These are untagged
+  // (no category), so they only ever show up in the ALL tab — category
+  // tabs are fed exclusively by the commission gallery auto-pull below.
+  // Single file serves both the grid thumbnail and the lightbox full view
+  // (same pattern as galleryExample above) — no separate thumb/full pair.
+  portfolioImage: (n) => `${IMG_BASE}portfolio/${n}.jpg`,
   avatar:         () => `${IMG_BASE}avatar/avatar.jpg`,
   hero:           () => `${IMG_BASE}hero/hero.jpg`
 };
@@ -1486,21 +1483,18 @@ confirmModalOverlay.addEventListener('click', (e) => {
 // No manifest file to maintain — images are discovered straight off disk by
 // probing numbered filenames. Folder layout:
 //
-//   images/portfolio/featured/thumbs/1.jpg..10.jpg  (+ fulls/1.jpg..10.jpg)
-//     -> your hand-picked "best of" set. These always lead the ALL tab, in
-//        this exact numeric order. Add/remove/renumber files to change the
-//        picks — nothing in the code needs editing.
+//   images/portfolio/1.jpg..N.jpg
+//     -> your hand-picked manual uploads, one file per piece (no thumb/full
+//        split). These always lead the ALL tab, in this exact numeric
+//        order, and are untagged (no category), so they never appear under
+//        a category tab. Add/remove/renumber files to change the picks —
+//        nothing in the code needs editing.
 //
-//   images/portfolio/<category>/thumbs/<n>.jpg  (+ fulls/<n>.jpg)
-//     -> category is one of PORTFOLIO_CATEGORIES below. Drop files in
-//        numbered sequentially (1.jpg, 2.jpg, ...); new ones are picked up
-//        automatically next time the page loads, no code changes needed.
-//        Empty categories simply don't show a tab.
-//
-// On top of that, every example image already uploaded for the commission
-// menu (images/commissions/gallery/<formatoKey>/<finalKey>/*.jpg) is pulled
-// in automatically to the matching tab below, based on that finalização —
-// so commission gallery photos never need to be uploaded twice.
+// Category tabs (PORTFOLIO_CATEGORIES below) are fed exclusively by
+// auto-pulling every example image already uploaded for the commission menu
+// (images/commissions/gallery/<formatoKey>/<finalKey>/*.jpg), based on that
+// finalização — so commission gallery photos never need to be uploaded
+// twice, and there's no separate per-category portfolio folder to maintain.
 const portfolioGrid = document.getElementById('portfolioGrid');
 const portfolioTabsEl = document.getElementById('portfolioTabs');
 
@@ -1529,8 +1523,7 @@ const PLACEHOLDER_DESC = {
   pt: 'Descrição — técnica, personagem, contexto da peça.',
   en: 'Description — technique, character, context of the piece.'
 };
-const FEATURED_MAX = 10;
-const CATEGORY_MAX = 40;
+const PORTFOLIO_MAX = 40; // upper bound when probing images/portfolio/thumbs+fulls
 const GALLERY_PER_TIER_MAX = 24; // upper bound when probing for extra commission gallery images beyond
                                   // the visible thumbnail row (also used when pulling these same
                                   // images into the matching Portfolio tab, see discoverPortfolio() below)
@@ -1542,14 +1535,19 @@ let activePortfolioTab = 'all';
 let currentLightboxList = [];
 let lightboxIndex = 0;
 
-// Resolves with {src, w, h} if the image exists, or null if it 404s.
-function probeImage(src){
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => resolve({ src, w: img.naturalWidth, h: img.naturalHeight });
-    img.onerror = () => resolve(null);
-    img.src = src;
-  });
+// Resolves true/false for whether src exists — uses a HEAD request instead
+// of downloading the actual image, so probing hundreds of numbered
+// filenames to see which exist doesn't also download all of them. This is
+// what makes loading="lazy" on the actual grid <img> tags meaningful: the
+// browser only fetches image bytes for the rows near the viewport, instead
+// of every candidate file getting fully downloaded during discovery.
+async function probeImage(src){
+  try {
+    const res = await fetch(src, { method: 'HEAD', cache: 'no-store' });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 // Sequentially probes numbered files 1.jpg, 2.jpg, ... via thumbSrcFn(n) /
@@ -1558,18 +1556,16 @@ async function probeNumberedFolder(thumbSrcFn, fullSrcFn, maxN, makeMeta){
   const items = [];
   let misses = 0;
   for(let n = 1; n <= maxN; n++){
-    const result = await probeImage(thumbSrcFn(n));
-    if(!result){
+    const exists = await probeImage(thumbSrcFn(n));
+    if(!exists){
       misses++;
       if(misses >= GAP_TOLERANCE) break;
       continue;
     }
     misses = 0;
     items.push({
-      thumbSrc: result.src,
+      thumbSrc: thumbSrcFn(n),
       fullSrc: fullSrcFn(n),
-      w: result.w,
-      h: result.h,
       ...makeMeta(n)
     });
   }
@@ -1577,11 +1573,12 @@ async function probeNumberedFolder(thumbSrcFn, fullSrcFn, maxN, makeMeta){
 }
 
 async function discoverPortfolio(){
-  // 1) Curated "featured" set — always leads the ALL tab, in file order.
-  const featured = await probeNumberedFolder(
-    IMG_PATHS.portfolioFeaturedThumb,
-    IMG_PATHS.portfolioFeaturedFull,
-    FEATURED_MAX,
+  // 1) Manually-curated set — always leads the ALL tab, in file order.
+  // Untagged (category: null), so these never show under a category tab.
+  const manual = await probeNumberedFolder(
+    IMG_PATHS.portfolioImage,
+    IMG_PATHS.portfolioImage,
+    PORTFOLIO_MAX,
     (n) => ({
       category: null,
       title: { pt: `Trabalho ${n}`, en: `Piece ${n}` },
@@ -1589,23 +1586,9 @@ async function discoverPortfolio(){
     })
   );
 
-  // 2) Dedicated per-category portfolio folders.
-  const categoryResults = await Promise.all(PORTFOLIO_CATEGORIES.map(async (cat) => {
-    const items = await probeNumberedFolder(
-      (n) => IMG_PATHS.portfolioCategoryThumb(cat, n),
-      (n) => IMG_PATHS.portfolioCategoryFull(cat, n),
-      CATEGORY_MAX,
-      (n) => ({
-        category: cat,
-        title: { pt: `Trabalho — ${PORTFOLIO_TAB_LABELS[cat].pt}`, en: `Piece — ${PORTFOLIO_TAB_LABELS[cat].en}` },
-        desc: PLACEHOLDER_DESC
-      })
-    );
-    return { cat, items };
-  }));
-
-  // 3) Auto-pull every commission gallery image into its matching tab —
+  // 2) Auto-pull every commission gallery image into its matching tab —
   // reuses images already uploaded for the commission menu, no re-upload.
+  // This is the only source that feeds the category tabs.
   const galleryProbes = [];
   Object.keys(DATA).forEach((formatoKey) => {
     const finalizacoes = DATA[formatoKey].finalizacoes || {};
@@ -1629,16 +1612,15 @@ async function discoverPortfolio(){
     return { cat, items };
   }));
 
-  // Assemble final order: featured -> rendered -> steamcapsules -> flatcell
-  // -> sketchline -> others (dedicated portfolio folder images first within
-  // each category, auto-pulled commission gallery images appended after).
+  // Assemble final order: manual uploads -> rendered -> steamcapsules ->
+  // flatcell -> sketchline -> others (auto-pulled commission gallery images
+  // within each category, in DATA/finalização iteration order).
   const byCategory = {};
   PORTFOLIO_CATEGORIES.forEach(c => byCategory[c] = []);
-  categoryResults.forEach(({ cat, items }) => byCategory[cat].push(...items));
   galleryResults.forEach(({ cat, items }) => byCategory[cat].push(...items));
 
   portfolioItems = [
-    ...featured,
+    ...manual,
     ...PORTFOLIO_CATEGORIES.flatMap(cat => byCategory[cat])
   ];
 
@@ -1695,8 +1677,7 @@ function renderPortfolio(){
     img.className = 'portfolio-img';
     img.src = p.thumbSrc;
     img.loading = 'lazy';
-    img.width = p.w;
-    img.height = p.h;
+    img.decoding = 'async';
     img.alt = p.title[LANG];
     item.appendChild(img);
 

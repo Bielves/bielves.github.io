@@ -1163,20 +1163,20 @@
   }
 
   .portfolio-grid{
-    column-count:4;
-    column-gap:2px;
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:2px;
   }
-  @media (max-width:700px){ .portfolio-grid{column-count:3;} }
-  @media (max-width:460px){ .portfolio-grid{column-count:2;} }
+  @media (max-width:700px){ .portfolio-grid{grid-template-columns:repeat(3, 1fr);} }
+  @media (max-width:460px){ .portfolio-grid{grid-template-columns:repeat(2, 1fr);} }
 
-  /* Each item's box height comes from its own <img> at its natural aspect
-     ratio (width:100%, height:auto) — no fixed/random heights, so the grid
-     genuinely reflows around whatever format each uploaded jpg happens to
-     be, portrait or landscape or square alike. */
+  /* Fixed aspect-ratio cells (rather than each item's natural height) so
+     rows fill left-to-right and stay aligned across columns, regardless of
+     whether the uploaded jpg is portrait, landscape, or square. The image
+     itself is cropped to fit via object-fit:cover. */
   .portfolio-item{
     position:relative;
-    break-inside:avoid;
-    margin-bottom:2px;
+    aspect-ratio:1/1;
     line-height:0;
     cursor:pointer;
     overflow:hidden;
@@ -1185,7 +1185,8 @@
   .portfolio-img{
     display:block;
     width:100%;
-    height:auto;
+    height:100%;
+    object-fit:cover;
     transition:transform 0.35s ease;
   }
   .portfolio-item:hover .portfolio-img{transform:scale(1.035);}
