@@ -114,7 +114,7 @@
     <div class="commission-layout">
 
       <div class="gallery-col">
-        <div class="gallery-main" id="galleryMain"></div>
+        <div class="gallery-main" id="galleryMain"><img class="gallery-main-img" id="galleryMainImg" alt=""></div>
         <div class="gallery-thumbs-row">
           <button type="button" class="gallery-nav-btn gallery-nav-prev hidden" id="galleryPrevBtn" aria-label="Previous examples">&#8249;</button>
           <div class="gallery-thumbs" id="galleryThumbs"></div>
@@ -129,6 +129,18 @@
         <div id="finalizacaoGroup">
           <label id="lblFinalizacao">Finalização</label>
           <select id="modalFinalizacao"></select>
+        </div>
+
+        <div id="pagesGroup" class="pages-group" style="display:none;">
+          <label id="lblPages">Número de páginas</label>
+          <div class="pages-row">
+            <div class="pages-stepper">
+              <button type="button" class="pages-btn" id="pagesMinus" aria-label="Decrease pages">&minus;</button>
+              <input type="number" class="pages-value" id="pagesValue" value="1" min="1" max="50" step="1" inputmode="numeric" aria-label="Number of pages">
+              <button type="button" class="pages-btn" id="pagesPlus" aria-label="Increase pages">+</button>
+            </div>
+            <span class="pages-unit-price" id="pagesUnitPrice"></span>
+          </div>
         </div>
 
         <label id="lblUso">Uso</label>
@@ -182,6 +194,11 @@
 
     </div>
   </div>
+</div>
+
+<!-- ---------- MODAL: Gallery main image zoom ---------- -->
+<div class="modal-overlay gallery-zoom-overlay" id="galleryZoomOverlay">
+  <img class="gallery-zoom-img" id="galleryZoomImg" alt="">
 </div>
 
 <!-- ---------- MODAL: Commission Request form ---------- -->

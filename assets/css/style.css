@@ -29,6 +29,7 @@
     color:var(--ink);
     font-family:'Ubuntu', -apple-system, sans-serif;
     transition:background 0.25s ease, color 0.25s ease;
+    overflow-x:hidden;
   }
   a{color:inherit;}
 
@@ -402,7 +403,7 @@
   .card-img-layer.active{ opacity:1; }
   /* Applied once a real photo loads successfully — see tryBgImage() in the
      script. Hides the placeholder label text so only the photo shows. */
-  .card-img.has-image, .gallery-main.has-image, .gallery-thumb.has-image, .portfolio-item.has-image, .avatar.has-image{
+  .card-img.has-image, .gallery-main.has-image, .gallery-thumb.has-image, .portfolio-item.has-image, .avatar.has-image, .review-avatar.has-image{
     color:transparent;
     user-select:none;
   }
@@ -516,10 +517,7 @@
     .gallery-col{border-right:none; border-bottom:2px solid var(--border-color); padding-bottom:24px;}
   }
   .gallery-main{
-    aspect-ratio:4/5;
     background:var(--panel);
-    background-size:cover;
-    background-position:center;
     border-radius:16px;
     border:2px solid var(--border-color);
     display:flex;
@@ -530,6 +528,24 @@
     font-size:0.85rem;
     text-align:center;
     padding:10px;
+    min-height:220px;
+    max-height:65vh;
+    overflow:hidden;
+  }
+  .gallery-main-img{
+    display:none;
+    max-width:100%;
+    max-height:calc(65vh - 20px);
+    width:auto;
+    height:auto;
+    object-fit:contain;
+    border-radius:8px;
+  }
+  .gallery-main.has-image .gallery-main-img{
+    display:block;
+  }
+  .gallery-main.has-image{
+    cursor:zoom-in;
   }
   .gallery-thumbs-row{
     display:flex;
@@ -648,6 +664,59 @@
   }
   .toggle-row button.active{background:var(--ink); color:var(--paper);}
   .toggle-row button:not(:last-child){border-right:2px solid var(--border-color);}
+
+  /* ---------- PAGE-COUNT STEPPER (perPage tiers, e.g. Coloring) ---------- */
+  .pages-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+  }
+  .pages-stepper{
+    display:flex;
+    align-items:center;
+    gap:14px;
+  }
+  .pages-btn{
+    width:34px; height:34px;
+    flex-shrink:0;
+    border-radius:50%;
+    border:2px solid var(--border-color);
+    background:var(--panel);
+    color:var(--ink);
+    font-size:1.15rem;
+    line-height:1;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .pages-btn:hover:not(:disabled){border-color:var(--accent); color:var(--accent);}
+  .pages-btn:disabled{opacity:0.3; cursor:default;}
+  .pages-value{
+    width:42px;
+    padding:6px 2px;
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-weight:700;
+    font-size:1rem;
+    text-align:center;
+    border:2px solid var(--border-color);
+    border-radius:10px;
+    background:var(--panel);
+    color:var(--ink);
+    -moz-appearance:textfield;
+  }
+  .pages-value:focus{outline:none; border-color:var(--accent);}
+  .pages-value::-webkit-outer-spin-button,
+  .pages-value::-webkit-inner-spin-button{
+    -webkit-appearance:none;
+    margin:0;
+  }
+  .pages-unit-price{
+    font-family:'Ubuntu', -apple-system, sans-serif;
+    font-size:0.78rem;
+    color:var(--muted);
+  }
   .modal-desc{
     font-size:0.9rem;
     line-height:1.55;
@@ -661,6 +730,7 @@
     display:flex;
     align-items:center;
     justify-content:space-between;
+    gap:16px;
     margin-top:32px;
     padding-top:20px;
     border-top:2px solid var(--border-color);
@@ -674,6 +744,9 @@
     position:relative;
     display:inline-flex;
     align-items:center;
+  }
+  .currency-select-wrap.hidden{
+    display:none;
   }
   .currency-select{
     appearance:none;
@@ -709,6 +782,7 @@
     font-weight:800;
     font-size:1.8rem;
     color:var(--accent);
+    text-align:right;
   }
 
   /* payment icons */
@@ -1164,11 +1238,20 @@
 
   .portfolio-grid{
     display:grid;
-    grid-template-columns:repeat(4, 1fr);
-    gap:2px;
+    grid-template-columns:repeat(auto-fill, minmax(170px, 1fr));
+    gap:3px;
+    width:100vw;
+    position:relative;
+    left:50%;
+    right:50%;
+    margin-left:-50vw;
+    margin-right:-50vw;
+    padding:0 20px;
+    box-sizing:border-box;
   }
-  @media (max-width:700px){ .portfolio-grid{grid-template-columns:repeat(3, 1fr);} }
-  @media (max-width:460px){ .portfolio-grid{grid-template-columns:repeat(2, 1fr);} }
+  @media (max-width:460px){
+    .portfolio-grid{grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); padding:0 10px;}
+  }
 
   /* Fixed aspect-ratio cells (rather than each item's natural height) so
      rows fill left-to-right and stay aligned across columns, regardless of
@@ -1316,6 +1399,25 @@
     margin:0 0 8px;
   }
 
+  /* ---------- GALLERY MAIN IMAGE ZOOM (commission modal) ---------- */
+  /* Reuses the shared .modal-overlay backdrop/centering rules — just an
+     image, no modal-box card around it, so it can go edge-to-edge and
+     stay in front of the still-open commission config modal underneath. */
+  .gallery-zoom-overlay{
+    z-index:260;
+    cursor:zoom-out;
+  }
+  .gallery-zoom-img{
+    max-width:92vw;
+    max-height:92vh;
+    width:auto;
+    height:auto;
+    object-fit:contain;
+    border-radius:12px;
+    box-shadow:0 10px 50px rgba(0,0,0,0.55);
+    cursor:default;
+  }
+
   /* ---------- REVIEWS ---------- */
   .review-card{
     background:var(--panel);
@@ -1334,6 +1436,8 @@
     width:42px; height:42px;
     border-radius:50%;
     background:var(--paper);
+    background-size:cover;
+    background-position:center;
     border:2px solid var(--border-color);
     display:flex;
     align-items:center;
@@ -1481,6 +1585,7 @@
     .card-title{font-size:1rem;}
     .modal-price-value{font-size:1.5rem;}
     .modal-price-row{flex-wrap:wrap; row-gap:10px;}
+    .pages-row{flex-wrap:wrap; row-gap:8px;}
   }
 
 /* ==================== IMAGE PROTECTION ====================

@@ -14,6 +14,9 @@ const STR = {
     hoverHint: "Clique para configurar",
     fromPrefix: "A partir de",
     lblFinalizacao: "Finalização",
+    lblPages: "Número de páginas",
+    perPageTag: "/ página",
+    pagesUnit: "páginas",
     lblUso: "Uso",
     usoPersonal: "Personal",
     usoComercial: "Comercial",
@@ -112,6 +115,9 @@ const STR = {
     hoverHint: "Click to configure",
     fromPrefix: "From",
     lblFinalizacao: "Finish",
+    lblPages: "Number of pages",
+    perPageTag: "/ page",
+    pagesUnit: "pages",
     lblUso: "Usage",
     usoPersonal: "Personal",
     usoComercial: "Commercial",
@@ -211,6 +217,8 @@ let LANG = 'en';
 //     see WSRV_ORIGIN/wsrvThumb below) and as the lightbox full image.
 //   images/avatar/avatar.jpg                                — header avatar
 //   images/hero/hero.jpg                                    — header background art
+//   images/reviews/<n>.jpg                                  — round avatar for the
+//     n-th reviewer in reviewsData (1-indexed, matches array order)
 const IMG_BASE = 'images/';
 const IMG_PATHS = {
   galleryExample: (formatoKey, finalKey, n) => `${IMG_BASE}commissions/gallery/${formatoKey}/${finalKey}/${n}.jpg`,
@@ -223,7 +231,12 @@ const IMG_PATHS = {
   // (same pattern as galleryExample above) — no separate thumb/full pair.
   portfolioImage: (n) => `${IMG_BASE}portfolio/${n}.jpg`,
   avatar:         () => `${IMG_BASE}avatar/avatar.jpg`,
-  hero:           () => `${IMG_BASE}hero/hero.jpg`
+  hero:           () => `${IMG_BASE}hero/hero.jpg`,
+  // One round avatar file per reviewer, matched to reviewsData by array
+  // index (1-based) — images/reviews/1.jpg is reviewsData[0]'s avatar, etc.
+  // Falls back to the placeholder circle automatically if missing, same
+  // pattern as every other tryBgImage() spot on the site.
+  reviewAvatar:   (n) => `${IMG_BASE}reviews/${n}.jpg`
 };
 const CARD_CYCLE_INTERVAL_MS = 4500; // dwell time per image before crossfading
 const CARD_CYCLE_FADE_MS = 1200;     // crossfade duration — kept slow/gentle on purpose
@@ -469,6 +482,28 @@ const DATA = {
       rendered:    { preco: 550, desc: { pt: "Rendering completo, ilustração completa.", en: "Full render, full illustration." } }
     }
   },
+  // Client provides their own finished lineart/sketch and just wants it
+  // colored. Single fixed-price tier, priced PER PAGE (see "perPage" below)
+  // instead of a flat price — the page stepper in the config modal
+  // multiplies "preco" by however many pages the client selects.
+  coloring: {
+    label: { pt: "Coloração", en: "Coloring" },
+    img: { pt: "Imagem Coloração", en: "Coloring image" },
+    cardDesc: {
+      pt: "Envie sua lineart ou sketch pronta e eu coloro. Preço por página.",
+      en: "Send your finished lineart or sketch and I'll color it. Priced per page."
+    },
+    finalizacoes: {
+      coloring: {
+        preco: 30,
+        perPage: true,
+        desc: {
+          pt: "Coloração de uma página (lineart ou sketch fornecido por você). 2 revisões.",
+          en: "Coloring for one page (lineart or sketch you provide). 2 revisions."
+        }
+      }
+    }
+  },
   // No fixed pricing tiers — client describes the request freely and price
   // is quoted after contact. "custom" is a single placeholder finalização
   // so it still fits the existing finalização/price plumbing.
@@ -501,7 +536,8 @@ const FINAL_LABELS = {
   cellshading: { pt: "Cell Shading", en: "Cell Shading" },
   rendered:    { pt: "Rendered / Painterly", en: "Rendered / Painterly" },
   custom:      { pt: "A combinar", en: "To be discussed" },
-  standard:    { pt: "Padrão", en: "Standard" }
+  standard:    { pt: "Padrão", en: "Standard" },
+  coloring:    { pt: "Coloração", en: "Coloring" }
 };
 
 // Real gallery images live at commissions/gallery/<formatoKey>/<finalKey>/1..N.jpg —
@@ -515,6 +551,12 @@ const EXAMPLES_PER_TIER = 4;
 const COMERCIAL_MULT = 2;
 let modalUsoAtual = 'personal';
 let currentFormatoKey = null;
+// Page count for "perPage" tiers (currently just Coloring) — the config
+// modal's stepper multiplies the tier's base "preco" by this value. Reset
+// to 1 every time the modal is opened fresh (see openCommissionModal).
+let modalPages = 1;
+const PAGES_MIN = 1;
+const PAGES_MAX = 50;
 
 function t(key){ return STR[LANG][key]; }
 function tf(key, vars){
@@ -568,6 +610,12 @@ function precoMinimo(formatoData){
   const precos = Object.values(formatoData.finalizacoes).map(f => f.preco).filter(p => p !== null);
   return precos.length ? Math.min(...precos) : null;
 }
+// True if ANY tier of this card is priced "perPage" (Coloring right now) —
+// used to append the "/ page" tag next to the card's price so it's clear
+// upfront that the number shown is a per-page rate, not a flat price.
+function formatoHasPerPage(formatoData){
+  return Object.values(formatoData.finalizacoes).some(f => f.perPage);
+}
 // null price means "quote after contact" (used by the "Other type of
 // illustration" card, which has no fixed pricing tiers).
 // All "preco" values in DATA are stored in USD. This function displays
@@ -603,6 +651,7 @@ function renderStaticText(){
   document.getElementById('revTitle').textContent = t('revTitle');
   document.getElementById('revSub').textContent = t('revSub');
   document.getElementById('lblFinalizacao').textContent = t('lblFinalizacao');
+  document.getElementById('lblPages').textContent = t('lblPages');
   document.getElementById('lblUso').textContent = t('lblUso');
   document.getElementById('usoPersonalBtn').textContent = t('usoPersonal');
   document.getElementById('usoComercialBtn').textContent = t('usoComercial');
@@ -806,10 +855,7 @@ function renderCommissionCards(){
 
     const price = document.createElement('div');
     price.className = 'card-price';
-    const minPrice = precoMinimo(formatoData);
-    price.innerHTML = minPrice === null
-      ? formatPrice(minPrice)
-      : t('fromPrefix') + ' <span>' + formatPrice(minPrice) + '</span>';
+    price.innerHTML = cardPriceHtml(formatoData);
 
     body.appendChild(title);
     body.appendChild(desc);
@@ -821,6 +867,15 @@ function renderCommissionCards(){
   });
 }
 
+// Shared by renderCommissionCards() and updateCardPrices() so the "from
+// $X" markup and the perPage "/ page" tag only need to be written once.
+function cardPriceHtml(formatoData){
+  const minPrice = precoMinimo(formatoData);
+  if(minPrice === null) return formatPrice(minPrice);
+  const perPageTag = formatoHasPerPage(formatoData) ? ' ' + t('perPageTag') : '';
+  return t('fromPrefix') + ' <span>' + formatPrice(minPrice) + '</span>' + perPageTag;
+}
+
 // Updates just the price text on each existing card (e.g. after a currency
 // change) — unlike renderCommissionCards(), this never touches
 // cardList.innerHTML or the cards' running image cycles, so switching
@@ -830,10 +885,7 @@ function updateCardPrices(){
     const formatoData = DATA[card.dataset.formatoKey];
     const priceEl = card.querySelector('.card-price');
     if(!formatoData || !priceEl) return;
-    const minPrice = precoMinimo(formatoData);
-    priceEl.innerHTML = minPrice === null
-      ? formatPrice(minPrice)
-      : t('fromPrefix') + ' <span>' + formatPrice(minPrice) + '</span>';
+    priceEl.innerHTML = cardPriceHtml(formatoData);
   });
 }
 
@@ -841,6 +893,7 @@ function updateCardPrices(){
 const commissionModalOverlay = document.getElementById('commissionModalOverlay');
 const noSlotsModalOverlay = document.getElementById('noSlotsModalOverlay');
 const galleryMain = document.getElementById('galleryMain');
+const galleryMainImg = document.getElementById('galleryMainImg');
 const galleryThumbs = document.getElementById('galleryThumbs');
 const galleryPrevBtn = document.getElementById('galleryPrevBtn');
 const galleryNextBtn = document.getElementById('galleryNextBtn');
@@ -853,6 +906,11 @@ const currencySelect = document.getElementById('currencySelect');
 const acceptTos = document.getElementById('acceptTos');
 const startRequestBtn = document.getElementById('startRequestBtn');
 const acceptWarning = document.getElementById('acceptWarning');
+const pagesGroup = document.getElementById('pagesGroup');
+const pagesValueEl = document.getElementById('pagesValue');
+const pagesMinusBtn = document.getElementById('pagesMinus');
+const pagesPlusBtn = document.getElementById('pagesPlus');
+const pagesUnitPriceEl = document.getElementById('pagesUnitPrice');
 
 // Number of thumbnails visible at once in the modal's bottom roll. If a
 // tier ends up with more real images than this, prev/next arrows appear
@@ -872,8 +930,14 @@ let galleryDiscoveryToken = 0; // bumped every renderGallery() call so a slow/st
 function showGalleryImage(n){
   galleryActiveNumber = n;
   galleryMain.classList.remove('has-image');
-  galleryMain.style.backgroundImage = '';
-  tryBgImage(galleryMain, IMG_PATHS.galleryExample(galleryFormatoKey, galleryFinalKeyForImages, n));
+  galleryMainImg.removeAttribute('src');
+  const src = IMG_PATHS.galleryExample(galleryFormatoKey, galleryFinalKeyForImages, n);
+  const preload = new Image();
+  preload.onload = () => {
+    galleryMainImg.src = src;
+    galleryMain.classList.add('has-image');
+  };
+  preload.src = src;
   galleryThumbs.querySelectorAll('.gallery-thumb').forEach(th => {
     th.classList.toggle('active', Number(th.dataset.n) === n);
   });
@@ -933,7 +997,6 @@ function renderGallery(formatoData, finalKey, preselectN){
     initialActive - GALLERY_THUMBS_VISIBLE,
     galleryThumbNumbers.length - GALLERY_THUMBS_VISIBLE
   ));
-  galleryMain.textContent = '';
   showGalleryImage(initialActive);
   renderGalleryThumbsWindow();
 
@@ -1003,6 +1066,7 @@ function openCommissionModal(formatoKey, preserveState, preselectFinal, preselec
 
   if(!preserveState){
     modalUsoAtual = 'personal';
+    modalPages = 1;
     modalUsoToggle.querySelectorAll('button').forEach(b => b.classList.remove('active'));
     modalUsoToggle.querySelector('[data-uso="personal"]').classList.add('active');
     acceptTos.checked = false;
@@ -1029,11 +1093,70 @@ function atualizarModalPreco(){
   if(preco !== null && modalUsoAtual === 'comercial'){
     preco = preco * COMERCIAL_MULT;
   }
+  // "perPage" tiers (Coloring) multiply by however many pages the client
+  // selected in the stepper — applied after the commercial multiplier so
+  // "$30/page -> comercial $60/page -> x3 pages = $180" reads naturally.
+  if(preco !== null && item.perPage){
+    preco = preco * modalPages;
+  }
   modalPrice.textContent = formatPrice(preco);
   modalDesc.textContent = item.desc[LANG] + (preco !== null && modalUsoAtual === 'comercial' ? t('comercialSuffix') : '');
+  // Currency choice is meaningless for a "price to be discussed" tier —
+  // hiding it also stops the (often longer) TBD string from crowding
+  // into the dropdown.
+  currencySelect.closest('.currency-select-wrap').classList.toggle('hidden', preco === null);
+  updatePagesUI(item);
 }
 
+// Shows/hides the page-count stepper depending on whether the current
+// finalização tier is priced "perPage" (only Coloring right now, but this
+// stays generic so any future per-page tier picks it up automatically),
+// and keeps its unit-price readout and +/- disabled states in sync.
+function updatePagesUI(item){
+  const show = !!(item && item.perPage);
+  pagesGroup.style.display = show ? '' : 'none';
+  if(!show) return;
+  // Don't stomp on the input's value while the user is actively typing in
+  // it (see the 'input' listener below) — only the +/- buttons and other
+  // triggers (currency/usage change, tier switch) need this sync.
+  if(document.activeElement !== pagesValueEl) pagesValueEl.value = modalPages;
+  pagesMinusBtn.disabled = modalPages <= PAGES_MIN;
+  pagesPlusBtn.disabled = modalPages >= PAGES_MAX;
+  let unitPrice = item.preco;
+  if(modalUsoAtual === 'comercial') unitPrice = unitPrice * COMERCIAL_MULT;
+  pagesUnitPriceEl.textContent = formatPrice(unitPrice) + ' ' + t('perPageTag');
+}
+
+pagesMinusBtn.addEventListener('click', () => {
+  if(modalPages <= PAGES_MIN) return;
+  modalPages--;
+  atualizarModalPreco();
+});
+pagesPlusBtn.addEventListener('click', () => {
+  if(modalPages >= PAGES_MAX) return;
+  modalPages++;
+  atualizarModalPreco();
+});
+// Typing a number directly updates the price live, clamped to the same
+// 1..PAGES_MAX range as the +/- buttons. Invalid/empty input (mid-edit,
+// e.g. the field briefly empty while retyping) is left alone rather than
+// snapped back immediately — snapToRange() below cleans it up on blur/Enter.
+pagesValueEl.addEventListener('input', () => {
+  const raw = parseInt(pagesValueEl.value, 10);
+  if(isNaN(raw)) return;
+  modalPages = Math.min(PAGES_MAX, Math.max(PAGES_MIN, raw));
+  atualizarModalPreco();
+});
+function snapPagesInputToValue(){
+  pagesValueEl.value = modalPages;
+}
+pagesValueEl.addEventListener('blur', snapPagesInputToValue);
+pagesValueEl.addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') pagesValueEl.blur();
+});
+
 modalFinalizacao.addEventListener('change', () => {
+  modalPages = 1;
   atualizarModalPreco();
   renderGallery(DATA[currentFormatoKey], modalFinalizacao.value);
 });
@@ -1093,6 +1216,30 @@ document.getElementById('commissionModalClose').addEventListener('click', () => 
 });
 commissionModalOverlay.addEventListener('click', (e) => {
   if(e.target === commissionModalOverlay) commissionModalOverlay.classList.remove('active');
+});
+
+// ==================== GALLERY MAIN IMAGE — click-to-zoom ====================
+// Clicking the big example image in the commission config modal opens it
+// at (near) full screen size; clicking anywhere outside the enlarged image
+// closes the zoom and returns to the config modal underneath, which was
+// never actually closed — just covered.
+const galleryZoomOverlay = document.getElementById('galleryZoomOverlay');
+const galleryZoomImg = document.getElementById('galleryZoomImg');
+
+galleryMain.addEventListener('click', () => {
+  if(!galleryMain.classList.contains('has-image') || !galleryMainImg.src) return;
+  galleryZoomImg.src = galleryMainImg.src;
+  galleryZoomOverlay.classList.add('active');
+});
+function closeGalleryZoom(){
+  galleryZoomOverlay.classList.remove('active');
+  galleryZoomImg.removeAttribute('src');
+}
+galleryZoomOverlay.addEventListener('click', (e) => {
+  if(e.target === galleryZoomOverlay) closeGalleryZoom();
+});
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape' && galleryZoomOverlay.classList.contains('active')) closeGalleryZoom();
 });
 
 // ==================== TOS EXPAND — opens a real new tab ====================
@@ -1174,7 +1321,11 @@ function updateRequestSummary(){
   if(preco !== null && modalUsoAtual === 'comercial'){
     preco = preco * COMERCIAL_MULT;
   }
-  reqPriceService.textContent = formatoData.label[LANG] + ' · ' + FINAL_LABELS[modalFinalizacao.value][LANG];
+  if(preco !== null && item.perPage){
+    preco = preco * modalPages;
+  }
+  reqPriceService.textContent = formatoData.label[LANG] + ' · ' + FINAL_LABELS[modalFinalizacao.value][LANG] +
+    (item.perPage ? ` × ${modalPages} ${t('pagesUnit')}` : '');
   reqPriceValue.textContent = formatPrice(preco);
 }
 
@@ -1405,8 +1556,10 @@ document.getElementById('reqSubmitBtn').addEventListener('click', async () => {
   const deadline = document.getElementById('reqDeadline').value;
   const usageLabel = modalUsoAtual === 'comercial' ? t('usoComercial') : t('usoPersonal');
   const formatoData = currentFormatoKey ? DATA[currentFormatoKey] : null;
+  const currentItem = formatoData ? formatoData.finalizacoes[modalFinalizacao.value] : null;
   const serviceLabel = formatoData
-    ? formatoData.label[LANG] + ' · ' + FINAL_LABELS[modalFinalizacao.value][LANG]
+    ? formatoData.label[LANG] + ' · ' + FINAL_LABELS[modalFinalizacao.value][LANG] +
+      (currentItem && currentItem.perPage ? ` × ${modalPages} ${t('pagesUnit')}` : '')
     : '—';
   // Field name sent to Web3Forms varies with the description kind so the
   // received email is self-explanatory (character vs illustration vs other).
@@ -1436,6 +1589,7 @@ document.getElementById('reqSubmitBtn').addEventListener('click', async () => {
     "Como vai usar essa commission": usageLabel,
     "Prazo do projeto": deadline || 'Sem prazo definido',
     "Formato / Finalização": serviceLabel,
+    ...(currentItem && currentItem.perPage ? { "Número de páginas": modalPages } : {}),
     "Preço base estimado": reqPriceValue.textContent,
     [descFieldName]: descricao || '—'
   };
@@ -1516,11 +1670,12 @@ confirmModalOverlay.addEventListener('click', (e) => {
 const portfolioGrid = document.getElementById('portfolioGrid');
 const portfolioTabsEl = document.getElementById('portfolioTabs');
 
-const PORTFOLIO_CATEGORIES = ['rendered', 'steamcapsules', 'flatcell', 'sketchline', 'others'];
+const PORTFOLIO_CATEGORIES = ['rendered', 'steamcapsules', 'coloring', 'flatcell', 'sketchline', 'others'];
 const PORTFOLIO_TAB_LABELS = {
   all:           { pt: 'Tudo',                     en: 'All' },
   rendered:      { pt: 'Rendered',                 en: 'Rendered' },
   steamcapsules: { pt: 'Steam Capsules',           en: 'Steam Capsules' },
+  coloring:      { pt: 'Coloração',                en: 'Coloring' },
   flatcell:      { pt: 'Cor Plana & Cell Shading',  en: 'Flat Color & Cell Shading' },
   sketchline:    { pt: 'Sketch & Lineart',          en: 'Sketch & Lineart' },
   others:        { pt: 'Outros',                    en: 'Others' }
@@ -1530,6 +1685,7 @@ const PORTFOLIO_TAB_LABELS = {
 const FINAL_TO_PORTFOLIO_CATEGORY = {
   rendered: 'rendered',
   standard: 'steamcapsules',
+  coloring: 'coloring',
   flat: 'flatcell',
   cellshading: 'flatcell',
   sketch: 'sketchline',
@@ -1891,6 +2047,10 @@ portfolioModalOverlay.addEventListener('click', (e) => {
 
 // ==================== REVIEWS ====================
 const reviewsList = document.getElementById('reviewsList');
+// Each entry's round avatar is pulled from images/reviews/<position>.jpg
+// (1-indexed, see IMG_PATHS.reviewAvatar / renderReviews) — e.g. Julia S.
+// below is images/reviews/1.jpg, EternalLord is images/reviews/2.jpg, etc.
+// Reorder/add/remove entries here and the avatar lookup follows automatically.
 const reviewsData = [
   { nome: 'Julia S.', nota: 5, texto: { pt: 'Excelente trabalho de extrema qualidade, sempre entregando mais do que foi pedido!!', en: 'Excellent work of extreme quality, always delivering more than was asked!!' } },
   { nome: 'EternalLord', nota: 4, texto: { pt: 'Eu encomendei uma ilustração de perfil, ficou muito foda. Recomendo muito.', en: 'I commissioned a profile illustration, it turned out amazing. Highly recommend.' } },
@@ -1903,7 +2063,7 @@ function starString(nota){
 
 function renderReviews(){
   reviewsList.innerHTML = '';
-  reviewsData.forEach(r => {
+  reviewsData.forEach((r, i) => {
     const card = document.createElement('div');
     card.className = 'review-card';
 
@@ -1913,6 +2073,11 @@ function renderReviews(){
     const avatar = document.createElement('div');
     avatar.className = 'review-avatar';
     avatar.textContent = 'Avatar';
+    // images/reviews/<n>.jpg, 1-indexed to match this reviewer's position
+    // in reviewsData — falls back to the "Avatar" placeholder circle if
+    // that file hasn't been uploaded yet (same pattern as every other
+    // tryBgImage() spot on the site).
+    tryBgImage(avatar, IMG_PATHS.reviewAvatar(i + 1));
 
     const nameStars = document.createElement('div');
     nameStars.className = 'review-name-stars';
