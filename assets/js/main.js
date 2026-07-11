@@ -2015,10 +2015,26 @@ function showLightboxItem(){
   lightboxTitle.textContent = p.title[LANG];
   lightboxText.textContent = p.desc[LANG];
 
+  // The box used to stay whatever size it last was (or a CSS default on
+  // first open) until the full-size photo finished downloading, then
+  // jump to the real aspect ratio the instant it loaded — a huge layout
+  // shift since the lightbox fills most of the viewport. The placeholder
+  // is already inlined as a base64 data URI (no network wait) and was
+  // generated at build time with the same aspect ratio as the source
+  // photo, so decoding it gives us the right box size basically
+  // instantly. The full photo's onload below still re-fits once it
+  // lands, but by then the box is already the right shape, so nothing
+  // visibly moves — that call is just a correction, not the first fit.
+  if(p.placeholder){
+    const probe = new Image();
+    probe.onload = () => fitLightboxToImage(probe.naturalWidth, probe.naturalHeight);
+    probe.src = p.placeholder;
+  }
+
   lightboxPhoto.onload = () => {
     lightboxSpinner.classList.add('hidden');
     lightboxPhoto.classList.add('loaded');
-    fitLightboxToImage();
+    fitLightboxToImage(lightboxPhoto.naturalWidth, lightboxPhoto.naturalHeight);
   };
   lightboxPhoto.src = webpVariant(p.fullSrc); // already confirmed to exist during discovery
 
@@ -2032,9 +2048,15 @@ function showLightboxItem(){
 // always fit together within the viewport instead of the image alone
 // eating most of the height and pushing the caption to hug the bottom
 // edge (or get clipped by the box's overflow:hidden).
-function fitLightboxToImage(){
-  const naturalW = lightboxPhoto.naturalWidth;
-  const naturalH = lightboxPhoto.naturalHeight;
+//
+// Takes explicit width/height instead of always reading
+// lightboxPhoto.naturalWidth/Height so it can be called early off the
+// placeholder's dimensions (see showLightboxItem) as well as later off
+// the real photo — falls back to the photo's own natural size when
+// called with no args (e.g. from the resize listener below).
+function fitLightboxToImage(naturalW, naturalH){
+  naturalW = naturalW || lightboxPhoto.naturalWidth;
+  naturalH = naturalH || lightboxPhoto.naturalHeight;
   if(!naturalW || !naturalH) return;
 
   // Title/text are already set by the time this runs (showLightboxItem
