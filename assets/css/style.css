@@ -152,18 +152,21 @@
     border-color:var(--accent);
     box-shadow:0 0 0 2px var(--accent);
   }
-  .theme-divider{
-    width:2px;
-    background:var(--ink);
-    opacity:0.25;
-    margin:2px 2px;
+  /* Theme toggle sits on its own at the top-left of the hero, separate
+     from the language toggle on the right — see .theme-toggle-left in
+     index.html. background uses --panel (not a fixed color) so the
+     button itself flips light/dark along with the rest of the site
+     instead of always showing the same off-white circle. */
+  .theme-toggle-left{
+    position:absolute;
+    top:12px; left:20px;
   }
   .theme-btn{
-    width:34px; height:34px;
+    width:40px; height:40px;
     border-radius:50%;
     border:2px solid var(--border-color);
-    background:rgba(240,237,230,0.9);
-    font-size:1rem;
+    background:var(--panel);
+    font-size:1.3rem;
     display:flex;
     align-items:center;
     justify-content:center;
@@ -174,9 +177,7 @@
   .hero-inner{
     position:relative;
     width:100%;
-    max-width:920px;
-    margin:0 auto;
-    padding:0 20px 18px;
+    padding:0 32px 18px;
     display:flex;
     align-items:flex-end;
     justify-content:space-between;
@@ -201,6 +202,10 @@
     flex-shrink:0;
     background:conic-gradient(from 0deg, var(--accent), transparent 35%, transparent 65%, var(--accent));
     animation:avatarRingSpin 7s linear infinite, avatarRingPulse 3s ease-in-out infinite;
+    transition:width 0.25s ease, height 0.25s ease;
+  }
+  .avatar-ring:hover{
+    width:140px; height:140px;
   }
   .avatar{
     width:100%; height:100%;
@@ -218,6 +223,11 @@
     text-align:center;
     flex-shrink:0;
     position:relative;
+    transition:border-width 0.25s ease, border-color 0.25s ease;
+  }
+  .avatar-ring:hover .avatar{
+    border-width:3px;
+    border-color:var(--accent);
   }
   @keyframes avatarRingSpin{
     to{ transform:rotate(360deg); }
@@ -972,6 +982,11 @@
     border-radius:999px;
     margin-bottom:4px;
   }
+  .commission-slots #commission-status{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+  }
   .modal-slots-status{
     display:flex;
     align-items:center;
@@ -988,14 +1003,36 @@
   .modal-slots-status.closed{
     background:rgba(200,70,60,0.14);
   }
+  .dot{
+    display:inline-block;
+    width:8px; height:8px;
+    border-radius:50%;
+    flex-shrink:0;
+    animation:dotBreatheGreen 2.2s ease-in-out infinite;
+  }
+  .dot.unavailable{
+    animation:dotBreatheRed 2.2s ease-in-out infinite;
+  }
   .modal-slots-status .dot{
     width:8px; height:8px;
     border-radius:50%;
-    background:var(--accent);
     flex-shrink:0;
+    animation:dotBreatheGreen 2.2s ease-in-out infinite;
   }
   .modal-slots-status.closed .dot{
-    background:#c8463c;
+    animation:dotBreatheRed 2.2s ease-in-out infinite;
+  }
+  @keyframes dotBreatheGreen{
+    0%, 100%{ background:#1e6b45; box-shadow:0 0 3px rgba(61,220,132,0.25); }
+    50%{ background:#3ddc84; box-shadow:0 0 9px rgba(61,220,132,0.8); }
+  }
+  @keyframes dotBreatheRed{
+    0%, 100%{ background:#7a2b24; box-shadow:0 0 3px rgba(226,69,58,0.25); }
+    50%{ background:#e2453a; box-shadow:0 0 9px rgba(226,69,58,0.8); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .dot, .modal-slots-status .dot{ animation:none; background:#3ddc84; }
+    .dot.unavailable, .modal-slots-status.closed .dot{ animation:none; background:#c8463c; }
   }
   .no-slots-box{
     max-width:400px;
@@ -1481,7 +1518,7 @@
     margin-bottom:12px;
   }
   .review-avatar{
-    width:42px; height:42px;
+    width:21px; height:21px;
     border-radius:50%;
     background:var(--paper);
     background-size:cover;
@@ -1611,7 +1648,9 @@
     .artist-block{flex:1 1 100%;}
     .socials{flex:1 1 100%;}
     .lang-toggle{top:10px; right:12px;}
-    .lang-btn, .theme-btn{width:30px; height:30px; font-size:0.95rem;}
+    .theme-toggle-left{top:10px; left:12px;}
+    .lang-btn{width:30px; height:30px; font-size:0.95rem;}
+    .theme-btn{width:34px; height:34px; font-size:1.1rem;}
     .avatar-ring{width:56px; height:56px; padding:2px;}
     .artist-name{font-size:1.1rem;}
     .speech-bubble{max-width:180px; font-size:0.72rem;}

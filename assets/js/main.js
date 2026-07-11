@@ -694,9 +694,15 @@ function renderSlotsUI(){
   }
 
   const open = SLOTS.available > 0;
-  headerEl.textContent = open
-    ? '🟢 ' + tf('slotsOpen', { n: SLOTS.available, max: SLOTS.maxSlots })
-    : '🔴 ' + t('slotsClosed');
+  headerEl.innerHTML = '';
+  const dotEl = document.createElement('span');
+  dotEl.className = 'dot' + (open ? '' : ' unavailable');
+  const labelEl = document.createElement('span');
+  labelEl.textContent = open
+    ? tf('slotsOpen', { n: SLOTS.available, max: SLOTS.maxSlots })
+    : t('slotsClosed');
+  headerEl.appendChild(dotEl);
+  headerEl.appendChild(labelEl);
 
   modalBox.classList.toggle('closed', !open);
   modalTextEl.textContent = open
