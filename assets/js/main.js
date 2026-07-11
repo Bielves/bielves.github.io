@@ -505,8 +505,7 @@ const DATA = {
     finalizacoes: {
       sketch:      { preco: 20,  desc: { pt: "Sketch simples, sem linha limpa. 1 revisão.", en: "Rough sketch, no clean line. 1 revision." } },
       lineart:     { preco: 30,  desc: { pt: "Lineart limpo, sem cor. 1 revisão.", en: "Clean lineart, no color. 1 revision." } },
-      flat:        { preco: 40,  desc: { pt: "Cor plana, sem sombra. 2 revisões.", en: "Flat color, no shading. 2 revisions." } },
-      cellshading: { preco: 60,  desc: { pt: "Shading básico em blocos. 2 revisões.", en: "Basic block shading. 2 revisions." } }
+      cellshading: { preco: 60,  desc: { pt: "Shading simples. 2 revisões.", en: "Simple shading. 2 revisions." } }
     }
   },
   bust: {
@@ -519,9 +518,8 @@ const DATA = {
     finalizacoes: {
       sketch:      { preco: 30,  desc: { pt: "Sketch de busto. 1 revisão.", en: "Bust sketch. 1 revision." } },
       lineart:     { preco: 45,  desc: { pt: "Lineart de busto. 1 revisão.", en: "Bust lineart. 1 revision." } },
-      flat:        { preco: 60,  desc: { pt: "Cor plana. 2 revisões.", en: "Flat color. 2 revisions." } },
-      cellshading: { preco: 85,  desc: { pt: "Shading básico. 2 revisões.", en: "Basic shading. 2 revisions." } },
-      rendered:    { preco: 140, desc: { pt: "Rendering completo, luz elaborada. 3 revisões.", en: "Full render, elaborate lighting. 3 revisions." } }
+      cellshading: { preco: 70,  desc: { pt: "Shading simples. 2 revisões.", en: "Simple shading. 2 revisions." } },
+      rendered:    { preco: 80, desc: { pt: "Rendering completo, luz elaborada. 3 revisões.", en: "Full render, elaborate lighting. 3 revisions." } }
     }
   },
   halfbody: {
@@ -532,11 +530,10 @@ const DATA = {
       en: "Waist-up, room for hands and props."
     },
     finalizacoes: {
-      sketch:      { preco: 45,  desc: { pt: "Sketch cintura pra cima.", en: "Waist-up sketch." } },
-      lineart:     { preco: 65,  desc: { pt: "Lineart cintura pra cima.", en: "Waist-up lineart." } },
-      flat:        { preco: 90,  desc: { pt: "Cor plana.", en: "Flat color." } },
-      cellshading: { preco: 130, desc: { pt: "Shading básico.", en: "Basic shading." } },
-      rendered:    { preco: 210, desc: { pt: "Rendering completo.", en: "Full render." } }
+      sketch:      { preco: 35,  desc: { pt: "Sketch cintura pra cima.", en: "Waist-up sketch." } },
+      lineart:     { preco: 45,  desc: { pt: "Lineart cintura pra cima.", en: "Waist-up lineart." } },
+      cellshading: { preco: 65, desc: { pt: "Shading simples.", en: "Simple shading." } },
+      rendered:    { preco: 80, desc: { pt: "Rendering completo.", en: "Full render." } }
     }
   },
   fullbody: {
@@ -547,11 +544,10 @@ const DATA = {
       en: "Full body, no scenery or simple background."
     },
     finalizacoes: {
-      sketch:      { preco: 70,  desc: { pt: "Sketch corpo inteiro.", en: "Full body sketch." } },
-      lineart:     { preco: 100, desc: { pt: "Lineart corpo inteiro.", en: "Full body lineart." } },
-      flat:        { preco: 140, desc: { pt: "Cor plana.", en: "Flat color." } },
-      cellshading: { preco: 200, desc: { pt: "Shading básico.", en: "Basic shading." } },
-      rendered:    { preco: 320, desc: { pt: "Rendering completo.", en: "Full render." } }
+      sketch:      { preco: 45,  desc: { pt: "Sketch corpo inteiro.", en: "Full body sketch." } },
+      lineart:     { preco: 65, desc: { pt: "Lineart corpo inteiro.", en: "Full body lineart." } },
+      cellshading: { preco: 75, desc: { pt: "Shading simples.", en: "Simple shading." } },
+      rendered:    { preco: 85, desc: { pt: "Rendering completo.", en: "Full render." } }
     }
   },
   fullbody_bg: {
@@ -562,10 +558,9 @@ const DATA = {
       en: "Full body with a complete scene, the most elaborate tier."
     },
     finalizacoes: {
-      lineart:     { preco: 130, desc: { pt: "Lineart com cenário.", en: "Lineart with scenery." } },
-      flat:        { preco: 190, desc: { pt: "Cor plana com cenário.", en: "Flat color with scenery." } },
-      cellshading: { preco: 260, desc: { pt: "Shading com cenário.", en: "Shading with scenery." } },
-      rendered:    { preco: 400, desc: { pt: "Rendering completo com cenário elaborado.", en: "Full render with elaborate scenery." } }
+      lineart:     { preco: 70,  desc: { pt: "Lineart com cenário.", en: "Lineart with scenery." } },
+      cellshading: { preco: 90, desc: { pt: "Shading simples com cenário.", en: "Simple shading with scenery." } },
+      rendered:    { preco: 120, desc: { pt: "Rendering completo com cenário elaborado.", en: "Full render with elaborate scenery." } }
     }
   },
   // "descKind" controls which label/help text shows in the Commission Request
@@ -580,10 +575,9 @@ const DATA = {
     },
     descKind: 'ilustracao',
     finalizacoes: {
-      lineart:     { preco: 180, desc: { pt: "Lineart de ilustração completa.", en: "Full illustration lineart." } },
-      flat:        { preco: 260, desc: { pt: "Cor plana, ilustração completa.", en: "Flat color, full illustration." } },
-      cellshading: { preco: 350, desc: { pt: "Shading, ilustração completa.", en: "Shading, full illustration." } },
-      rendered:    { preco: 550, desc: { pt: "Rendering completo, ilustração completa.", en: "Full render, full illustration." } }
+      lineart:     { preco: 150, desc: { pt: "Lineart de ilustração completa.", en: "Full illustration lineart." } },
+      cellshading: { preco: 190, desc: { pt: "Shading simples, ilustração completa.", en: "Simple shading, full illustration." } },
+      rendered:    { preco: 220, desc: { pt: "Rendering completo, ilustração completa.", en: "Full render, full illustration." } }
     }
   },
   // Client provides their own finished lineart/sketch and just wants it
@@ -636,8 +630,7 @@ const DATA = {
 const FINAL_LABELS = {
   sketch:      { pt: "Sketch / Rough", en: "Sketch / Rough" },
   lineart:     { pt: "Lineart Only", en: "Lineart Only" },
-  flat:        { pt: "Flat Color", en: "Flat Color" },
-  cellshading: { pt: "Cell Shading", en: "Cell Shading" },
+  cellshading: { pt: "Shading Simples", en: "Simple Shading" },
   rendered:    { pt: "Rendered / Painterly", en: "Rendered / Painterly" },
   custom:      { pt: "A combinar", en: "To be discussed" },
   standard:    { pt: "Padrão", en: "Standard" },
@@ -651,6 +644,14 @@ const FINAL_LABELS = {
 // uploading more examples per tier just gives it a bigger pool to draw from.
 
 const COMERCIAL_MULT = 2;
+// Formats whose price never gets the commercial x2 multiplier — "Coloring"
+// is priced per-page and always commercial-rate work by nature, and "Steam
+// Capsule Art" is always a commercial deliverable at a single fixed price,
+// so neither has a separate "personal" rate to multiply up from.
+const NO_COMERCIAL_MULT_FORMATS = ['coloring', 'steamcapsule'];
+function usaMultiplicadorComercial(formatoKey){
+  return !NO_COMERCIAL_MULT_FORMATS.includes(formatoKey);
+}
 let modalUsoAtual = 'personal';
 let currentFormatoKey = null;
 // Page count for "perPage" tiers (currently just Coloring) — the config
@@ -911,17 +912,40 @@ const headerBubble = document.getElementById('headerBubble');
 let hasHiddenOnce = false;
 let bubbleHideTimer = null;
 
+let heroScrollTicking = false;
 window.addEventListener('scroll', () => {
+  if(heroScrollTicking) return;
+  heroScrollTicking = true;
+  requestAnimationFrame(() => {
+    heroScrollTicking = false;
+    handleHeroScroll();
+  });
+}, { passive:true });
+
+function handleHeroScroll(){
   const y = window.scrollY;
-  const heroH = document.querySelector('.hero').offsetHeight;
+  const currentHeroH = document.querySelector('.hero').offsetHeight;
+
+  // On the commissions tab the card list scrolls in its own internal
+  // strip (see .card-list max-height on mobile) rather than the page
+  // itself, which leaves very little real scroll range on the page.
+  // With so little range, scrollY bounces around near 0 during a normal
+  // scroll gesture and was crossing the show/hide thresholds back and
+  // forth on every frame — the hero would flicker and appear to get
+  // "stuck" mid-animation. If there isn't enough scrollable page height
+  // to cleanly clear both thresholds, skip the collapse entirely and
+  // leave the hero exactly as it is.
+  const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+  if(maxScroll < currentHeroH * 0.6) return;
+
   // Two separate thresholds instead of one shared 50% line — a scroll
   // position sitting right at the old boundary caused the header to
   // hide/show on every tiny scroll wobble, firing a real layout shift
   // (fixed-element transform) each time. Reveal only above 20% of hero
   // height, hide only below 60%; the gap between them is dead zone where
   // whatever state we're already in just stays put.
-  const showThreshold = heroH * 0.2;
-  const hideThreshold = heroH * 0.6;
+  const showThreshold = currentHeroH * 0.2;
+  const hideThreshold = currentHeroH * 0.6;
   const isHidden = topWrap.classList.contains('hide-hero');
   const nearTop = isHidden ? y < showThreshold : y < hideThreshold;
 
@@ -946,7 +970,7 @@ window.addEventListener('scroll', () => {
     headerBubble.classList.remove('show');
     if(wasVisible) syncPageContentPadding();
   }
-}, { passive:true });
+}
 
 // Hovering the avatar also reveals the speech bubble, regardless of scroll state
 const avatarPlaceholder = document.getElementById('avatarPlaceholder');
@@ -1239,10 +1263,12 @@ function openCommissionModal(formatoKey, preserveState, preselectFinal, preselec
   renderGallery(formatoData, modalFinalizacao.value, modalFinalizacao.value === preselectFinal ? preselectImageN : undefined);
 
   // "Coloring" commissions only make sense as commercial work (client
-  // supplies their own lineart/sketch to be colored) — there's no
-  // personal-use tier, so the toggle is hidden and usage is pinned to
-  // "comercial" (the commercial ToS clause still applies as normal).
-  const usoLocked = formatoKey === 'coloring';
+  // supplies their own lineart/sketch to be colored) and "Steam Capsule
+  // Art" is always a commercial deliverable — neither has a personal-use
+  // tier, so the toggle is hidden and usage is pinned to "comercial" (the
+  // commercial ToS clause still applies as normal; the price itself isn't
+  // multiplied for these two, see NO_COMERCIAL_MULT_FORMATS above).
+  const usoLocked = formatoKey === 'coloring' || formatoKey === 'steamcapsule';
   document.getElementById('lblUso').style.display = usoLocked ? 'none' : '';
   modalUsoToggle.style.display = usoLocked ? 'none' : '';
 
@@ -1272,7 +1298,8 @@ function atualizarModalPreco(){
   let preco = item.preco;
   // Custom-quote tiers (preco === null) skip the commercial multiplier —
   // there's no base number to multiply yet.
-  if(preco !== null && modalUsoAtual === 'comercial'){
+  const usaMult = modalUsoAtual === 'comercial' && usaMultiplicadorComercial(currentFormatoKey);
+  if(preco !== null && usaMult){
     preco = preco * COMERCIAL_MULT;
   }
   // "perPage" tiers (Coloring) multiply by however many pages the client
@@ -1282,7 +1309,7 @@ function atualizarModalPreco(){
     preco = preco * modalPages;
   }
   modalPrice.textContent = formatPrice(preco);
-  modalDesc.textContent = item.desc[LANG] + (preco !== null && modalUsoAtual === 'comercial' ? t('comercialSuffix') : '');
+  modalDesc.textContent = item.desc[LANG] + (preco !== null && usaMult ? t('comercialSuffix') : '');
   // Currency choice is meaningless for a "price to be discussed" tier —
   // hiding it also stops the (often longer) TBD string from crowding
   // into the dropdown.
@@ -1305,7 +1332,7 @@ function updatePagesUI(item){
   pagesMinusBtn.disabled = modalPages <= PAGES_MIN;
   pagesPlusBtn.disabled = modalPages >= PAGES_MAX;
   let unitPrice = item.preco;
-  if(modalUsoAtual === 'comercial') unitPrice = unitPrice * COMERCIAL_MULT;
+  if(modalUsoAtual === 'comercial' && usaMultiplicadorComercial(currentFormatoKey)) unitPrice = unitPrice * COMERCIAL_MULT;
   pagesUnitPriceEl.textContent = formatPrice(unitPrice) + ' ' + t('perPageTag');
 }
 
@@ -1500,7 +1527,7 @@ function updateRequestSummary(){
   if(!item) return;
 
   let preco = item.preco;
-  if(preco !== null && modalUsoAtual === 'comercial'){
+  if(preco !== null && modalUsoAtual === 'comercial' && usaMultiplicadorComercial(currentFormatoKey)){
     preco = preco * COMERCIAL_MULT;
   }
   if(preco !== null && item.perPage){
@@ -1852,13 +1879,13 @@ confirmModalOverlay.addEventListener('click', (e) => {
 const portfolioGrid = document.getElementById('portfolioGrid');
 const portfolioTabsEl = document.getElementById('portfolioTabs');
 
-const PORTFOLIO_CATEGORIES = ['rendered', 'steamcapsules', 'coloring', 'flatcell', 'sketchline', 'others'];
+const PORTFOLIO_CATEGORIES = ['rendered', 'steamcapsules', 'coloring', 'simpleshading', 'sketchline', 'others'];
 const PORTFOLIO_TAB_LABELS = {
   all:           { pt: 'Tudo',                     en: 'All' },
   rendered:      { pt: 'Rendered',                 en: 'Rendered' },
   steamcapsules: { pt: 'Steam Capsules',           en: 'Steam Capsules' },
   coloring:      { pt: 'Colorista',                en: 'Colorist' },
-  flatcell:      { pt: 'Cor Plana & Cell Shading',  en: 'Flat Color & Cell Shading' },
+  simpleshading: { pt: 'Shading Simples',          en: 'Simple Shading' },
   sketchline:    { pt: 'Sketch & Lineart',          en: 'Sketch & Lineart' },
   others:        { pt: 'Outros',                    en: 'Others' }
 };
@@ -1868,8 +1895,7 @@ const FINAL_TO_PORTFOLIO_CATEGORY = {
   rendered: 'rendered',
   standard: 'steamcapsules',
   coloring: 'coloring',
-  flat: 'flatcell',
-  cellshading: 'flatcell',
+  cellshading: 'simpleshading',
   sketch: 'sketchline',
   lineart: 'sketchline',
   custom: 'others'
@@ -1987,8 +2013,9 @@ async function discoverPortfolio(){
   });
 
   // Assemble final order: manual uploads -> rendered -> steamcapsules ->
-  // flatcell -> sketchline -> others (auto-pulled commission gallery images
-  // within each category, in DATA/finalização iteration order).
+  // coloring -> simpleshading -> sketchline -> others (auto-pulled
+  // commission gallery images within each category, in DATA/finalização
+  // iteration order).
   portfolioItems = [
     ...manual,
     ...PORTFOLIO_CATEGORIES.flatMap(cat => byCategory[cat])
@@ -2076,7 +2103,7 @@ function renderPortfolio(){
 // ==================== PORTFOLIO LIGHTBOX ====================
 const portfolioModalOverlay = document.getElementById('portfolioModalOverlay');
 const lightboxWrap = document.querySelector('.lightbox-wrap');
-const lightboxDesc = document.querySelector('.lightbox-desc');
+const lightboxCaption = document.getElementById('lightboxCaption');
 const lightboxBox = document.querySelector('.lightbox-box');
 const lightboxPhoto = document.getElementById('lightboxPhoto');
 const lightboxTitle = document.getElementById('lightboxTitle');
@@ -2101,6 +2128,7 @@ function showLightboxItem(){
   if(!p) return;
 
   lightboxPhoto.classList.remove('loaded', 'zoomed', 'dragging');
+  lightboxCaption.classList.remove('pinned');
   resetLightboxPan();
   lightboxTitle.textContent = p.title[LANG];
   lightboxText.textContent = p.desc[LANG];
@@ -2175,11 +2203,10 @@ function showLightboxItem(){
 
 // Sizes the lightbox box to exactly match the photo's own aspect ratio
 // (clamped to the viewport) — landscape pieces open wide, square pieces
-// open square. The caption's own height is measured first and subtracted
-// from the available height budget, so the image + title + description
-// always fit together within the viewport instead of the image alone
-// eating most of the height and pushing the caption to hug the bottom
-// edge (or get clipped by the box's overflow:hidden).
+// open square. The caption is now a small overlay bubble tucked into a
+// corner of the photo itself (see .lightbox-caption in style.css) rather
+// than a block below it, so the image gets to use nearly the whole
+// available height instead of sharing it with a title/description block.
 //
 // Takes explicit width/height instead of always reading
 // lightboxPhoto.naturalWidth/Height so it can be called early off the
@@ -2200,15 +2227,15 @@ function fitLightboxToImage(naturalW, naturalH, allowUpscale){
   naturalH = naturalH || lightboxPhoto.naturalHeight;
   if(!naturalW || !naturalH) return;
 
-  // Title/text are already set by the time this runs (showLightboxItem
-  // sets them before the image's onload fires), so the desc block's real
-  // rendered height — including its own max-height/scroll clamp — is
-  // known here rather than guessed at.
-  const descH = lightboxDesc ? lightboxDesc.getBoundingClientRect().height : 0;
+  // The caption is now an overlay tucked into a corner of the photo
+  // itself (see .lightbox-caption in style.css) rather than a block
+  // sitting below the image, so there's no separate caption height to
+  // subtract from the available budget — the image can use nearly the
+  // full modal height.
   const CHROME = 24; // modal border + close button breathing room
 
   const maxW = Math.min(window.innerWidth * 0.92, 900);
-  const maxH = Math.max(window.innerHeight * 0.8 - descH - CHROME, window.innerHeight * 0.35);
+  const maxH = Math.max(window.innerHeight * 0.9 - CHROME, window.innerHeight * 0.4);
   const rawScale = Math.min(maxW / naturalW, maxH / naturalH);
   const scale = allowUpscale ? rawScale : Math.min(rawScale, 1);
   const wrapWidth = Math.floor(naturalW * scale);
@@ -2216,11 +2243,10 @@ function fitLightboxToImage(naturalW, naturalH, allowUpscale){
   lightboxWrap.style.width = wrapWidth + 'px';
   lightboxWrap.style.height = Math.floor(naturalH * scale) + 'px';
   // .lightbox-box is width:auto by default, which shrink-to-fits around
-  // its widest child — including the caption's own unwrapped text width.
-  // A long caption on a narrow/portrait image would otherwise pull the
-  // whole box wider than the photo, leaving a dead gap beside it. Pinning
-  // the box to the same width as the image forces the caption to wrap
-  // within that width instead.
+  // its widest child. Pinning it to the same width as the image keeps the
+  // box exactly photo-shaped now that the caption is an absolutely
+  // positioned overlay (max-width-capped) rather than a child that could
+  // otherwise stretch the box wider.
   if(lightboxBox) lightboxBox.style.width = wrapWidth + 'px';
 }
 window.addEventListener('resize', () => {
@@ -2311,6 +2337,15 @@ lightboxPhoto.addEventListener('touchmove', (e) => {
   moveDrag(t.clientX, t.clientY);
 }, { passive: true });
 lightboxPhoto.addEventListener('touchend', endDrag);
+
+// The caption bubble is low-opacity/clamped by default so it doesn't cover
+// the art (see .lightbox-caption in style.css). Desktop reveals it on
+// hover; touch devices have no hover, so a tap toggles a "pinned" class
+// that CSS treats the same as :hover — full opacity, untruncated text.
+lightboxCaption.addEventListener('click', (e) => {
+  e.stopPropagation();
+  lightboxCaption.classList.toggle('pinned');
+});
 
 document.getElementById('lightboxPrev').addEventListener('click', (e) => {
   e.stopPropagation();

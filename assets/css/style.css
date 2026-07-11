@@ -1460,25 +1460,61 @@
   .lightbox-nav-btn.prev{left:10px;}
   .lightbox-nav-btn.next{right:10px;}
 
-  .lightbox-desc{
-    padding:22px 24px 28px;
-    font-size:0.95rem;
-    line-height:1.6;
-    max-height:30vh;
-    overflow-y:auto; /* own scroll for long captions instead of relying
-                         on the box's overflow:hidden, which would just
-                         clip the text with no way to read the rest */
+  .lightbox-caption{
+    position:absolute;
+    left:12px;
+    bottom:12px;
+    max-width:min(78%, 420px);
+    padding:10px 14px;
+    border-radius:12px;
+    background:rgba(20,20,20,0.42);
+    backdrop-filter:blur(6px);
+    -webkit-backdrop-filter:blur(6px);
+    opacity:0.5;
+    transform:translateY(2px);
+    transition:opacity 0.2s ease, background 0.2s ease, transform 0.2s ease;
+    pointer-events:auto;
+    cursor:default;
   }
-  .lightbox-desc h3{
+  .lightbox-wrap:hover .lightbox-caption,
+  .lightbox-caption:hover,
+  .lightbox-caption.pinned{
+    opacity:1;
+    background:rgba(20,20,20,0.72);
+    transform:translateY(0);
+  }
+  .lightbox-wrap:hover .lightbox-caption p,
+  .lightbox-caption:hover p,
+  .lightbox-caption.pinned p{
+    -webkit-line-clamp:unset;
+    overflow:visible;
+    max-height:34vh;
+    overflow-y:auto;
+  }
+  .lightbox-caption h3{
     font-family:'Ubuntu', -apple-system, sans-serif;
-    font-size:1.3rem;
-    font-weight:800;
-    color:var(--ink);
-    margin:0 0 10px;
+    font-size:0.85rem;
+    font-weight:700;
+    color:#fff;
+    margin:0 0 2px;
+    line-height:1.3;
   }
-  .lightbox-desc p{
-    margin:0; /* kill the browser's default ~1em p margin — the h3's
-                 margin-bottom above is the only gap we want */
+  .lightbox-caption p{
+    margin:0;
+    font-size:0.72rem;
+    line-height:1.4;
+    color:#f2f2f2;
+    /* Small, wrapping snippet, not a wall of text — keeps the bubble
+       compact so it doesn't cover much of the piece it's describing. */
+    display:-webkit-box;
+    -webkit-line-clamp:3;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+  @media (hover:none){
+    /* No hover on touch — start faded in a little more so the caption is
+       readable without a tap, but still stay out of the image's way. */
+    .lightbox-caption{opacity:0.68;}
   }
 
   /* ---------- GALLERY MAIN IMAGE ZOOM (commission modal) ---------- */
@@ -1687,12 +1723,12 @@
        text pushed out entirely. flex-shrink:0 keeps cards at their
        natural size so the container scrolls instead of squashing them. */
     .card-list .card{flex-shrink:0;}
-    .card-img{min-height:230px;}
-    .card-body{padding:14px 16px;}
-    .card-title{font-size:1rem; margin:0 0 3px;}
-    .card-desc{font-size:0.76rem; line-height:1.35; margin-bottom:7px;}
-    .card-price{font-size:0.65rem;}
-    .card-price span{font-size:1.05rem;}
+    .card-img{min-height:250px;}
+    .card-body{padding:10px 14px;}
+    .card-title{font-size:0.88rem; margin:0 0 2px;}
+    .card-desc{font-size:0.68rem; line-height:1.28; margin-bottom:5px;}
+    .card-price{font-size:0.6rem;}
+    .card-price span{font-size:0.95rem;}
 
     /* Fixed 4-column portfolio grid on mobile instead of auto-fill, which
        was landing on 3 (sometimes fewer) columns on real phone widths. */
