@@ -330,6 +330,7 @@
 
   #pageContent{
     padding-top:340px;
+    transition:padding-top 0.35s ease; /* matches .top-wrap.hide-hero's transform transition */
   }
   main{
     max-width:920px;

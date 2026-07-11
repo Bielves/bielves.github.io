@@ -5,10 +5,6 @@ const STR = {
     navCommissions: "Commissions",
     navPortfolio: "Portfolio",
     navReviews: "Reviews",
-    commTitle: "Menu de Commissions",
-    commSub: "Clique na imagem para configurar e reservar",
-    portTitle: "Portfolio",
-    portSub: "Clique numa peça para ver em detalhe",
     revTitle: "Reviews",
     revSub: "Feedback de clientes anteriores",
     hoverHint: "Clique para configurar",
@@ -106,10 +102,6 @@ const STR = {
     navCommissions: "Commissions",
     navPortfolio: "Portfolio",
     navReviews: "Reviews",
-    commTitle: "Commission Menu",
-    commSub: "Click the image to configure and book",
-    portTitle: "Portfolio",
-    portSub: "Click a piece to see it in detail",
     revTitle: "Reviews",
     revSub: "Feedback from past clients",
     hoverHint: "Click to configure",
@@ -493,6 +485,11 @@ const DATA = {
       pt: "Envie sua lineart ou sketch pronta e eu coloro. Preço por página.",
       en: "Send your finished lineart or sketch and I'll color it. Priced per page."
     },
+    // Coloring commissions are commercial-use only — there's no personal
+    // tier for this one. Forces modalUsoAtual to 'comercial' on open and
+    // hides the personal/comercial toggle (see openCommissionModal), but
+    // still shows the ToS's commercial usage clause as normal.
+    forcedUso: 'comercial',
     finalizacoes: {
       coloring: {
         preco: 30,
@@ -644,10 +641,6 @@ function renderStaticText(){
   document.getElementById('navCommissions').textContent = t('navCommissions');
   document.getElementById('navPortfolio').textContent = t('navPortfolio');
   document.getElementById('navReviews').textContent = t('navReviews');
-  document.getElementById('commTitle').textContent = t('commTitle');
-  document.getElementById('commSub').textContent = t('commSub');
-  document.getElementById('portTitle').textContent = t('portTitle');
-  document.getElementById('portSub').textContent = t('portSub');
   document.getElementById('revTitle').textContent = t('revTitle');
   document.getElementById('revSub').textContent = t('revSub');
   document.getElementById('lblFinalizacao').textContent = t('lblFinalizacao');
@@ -750,13 +743,22 @@ themeToggle.addEventListener('click', () => {
 const topWrap = document.getElementById('topWrap');
 const pageContent = document.getElementById('pageContent');
 
+// Cached by setHeroHeightVar() below, reused by the scroll handler so it
+// doesn't need to re-measure the DOM on every scroll event.
+let cachedHeroH = 0;
+let cachedNavH = 0;
+
 function setHeroHeightVar(){
   const heroEl = document.querySelector('.hero');
   const navEl = document.querySelector('nav');
-  const heroH = heroEl.offsetHeight;
-  const navH = navEl.offsetHeight;
-  document.documentElement.style.setProperty('--hero-h', heroH + 'px');
-  pageContent.style.paddingTop = (heroH + navH) + 'px';
+  cachedHeroH = heroEl.offsetHeight;
+  cachedNavH = navEl.offsetHeight;
+  document.documentElement.style.setProperty('--hero-h', cachedHeroH + 'px');
+  // Reserved space always matches the header's CURRENT state (hidden or
+  // not) rather than unconditionally assuming it's fully visible — avoids
+  // reintroducing the scroll-gap bug this is paired with below if a
+  // resize happens while the header is hidden.
+  pageContent.style.paddingTop = (topWrap.classList.contains('hide-hero') ? cachedNavH : cachedHeroH + cachedNavH) + 'px';
 }
 window.addEventListener('load', setHeroHeightVar);
 window.addEventListener('resize', setHeroHeightVar);
@@ -767,8 +769,7 @@ let bubbleHideTimer = null;
 
 window.addEventListener('scroll', () => {
   const y = window.scrollY;
-  const heroH = document.querySelector('.hero').offsetHeight;
-  const nearTop = y < heroH * 0.5;
+  const nearTop = y < cachedHeroH * 0.5;
 
   if(nearTop){
     // Only reveal the header once we're actually back near the top of the
@@ -776,6 +777,12 @@ window.addEventListener('scroll', () => {
     // bottom of the Portfolio grid) should NOT bring it back.
     const wasHidden = topWrap.classList.contains('hide-hero');
     topWrap.classList.remove('hide-hero');
+    // The hero banner is translated away (not removed from layout), so
+    // #pageContent's reserved top padding has to shrink down to just the
+    // nav's height in step with it — otherwise the content underneath
+    // keeps the FULL hero+nav gap even though only the nav is still
+    // visible, leaving an empty band where the hero used to be.
+    pageContent.style.paddingTop = (cachedHeroH + cachedNavH) + 'px';
     if(wasHidden && hasHiddenOnce){
       // Brief "welcome back" flash on the reveal itself, not a bubble that
       // stays stuck open for as long as you happen to linger near the top.
@@ -785,6 +792,7 @@ window.addEventListener('scroll', () => {
     }
   } else {
     topWrap.classList.add('hide-hero');
+    pageContent.style.paddingTop = cachedNavH + 'px';
     hasHiddenOnce = true;
     headerBubble.classList.remove('show');
   }
@@ -1065,10 +1073,10 @@ function openCommissionModal(formatoKey, preserveState, preselectFinal, preselec
   renderGallery(formatoData, modalFinalizacao.value, modalFinalizacao.value === preselectFinal ? preselectImageN : undefined);
 
   if(!preserveState){
-    modalUsoAtual = 'personal';
+    modalUsoAtual = formatoData.forcedUso || 'personal';
     modalPages = 1;
     modalUsoToggle.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-    modalUsoToggle.querySelector('[data-uso="personal"]').classList.add('active');
+    modalUsoToggle.querySelector(`[data-uso="${modalUsoAtual}"]`).classList.add('active');
     acceptTos.checked = false;
     acceptWarning.classList.remove('show');
     updateStartButtonState();
@@ -1078,6 +1086,12 @@ function openCommissionModal(formatoKey, preserveState, preselectFinal, preselec
     tosPreview.style.display = '';
     tosFull.innerHTML = getTosHtml();
   }
+  // Commercial-only tiers (e.g. Coloring) have nothing to pick between —
+  // same reasoning as the finalização selector above, hide the toggle
+  // rather than show a choice that isn't really one. The ToS clause still
+  // reflects modalUsoAtual normally (forced to 'comercial' above), so the
+  // commercial usage terms still show in full.
+  modalUsoToggle.style.display = formatoData.forcedUso ? 'none' : '';
 
   currencySelect.value = DISPLAY_CURRENCY;
   atualizarModalPreco();
@@ -1675,7 +1689,7 @@ const PORTFOLIO_TAB_LABELS = {
   all:           { pt: 'Tudo',                     en: 'All' },
   rendered:      { pt: 'Rendered',                 en: 'Rendered' },
   steamcapsules: { pt: 'Steam Capsules',           en: 'Steam Capsules' },
-  coloring:      { pt: 'Coloração',                en: 'Coloring' },
+  coloring:      { pt: 'Colorista',                en: 'Colorist' },
   flatcell:      { pt: 'Cor Plana & Cell Shading',  en: 'Flat Color & Cell Shading' },
   sketchline:    { pt: 'Sketch & Lineart',          en: 'Sketch & Lineart' },
   others:        { pt: 'Outros',                    en: 'Others' }
