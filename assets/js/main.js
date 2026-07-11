@@ -905,7 +905,12 @@ function setHeroHeightVar(){
   document.documentElement.style.setProperty('--hero-h', heroH + 'px');
   syncPageContentPadding();
 }
-window.addEventListener('load', setHeroHeightVar);
+// DOMContentLoaded, not 'load': hero/nav height only depends on CSS layout
+// (hero has a fixed height, nav sizes from text/padding), not on images
+// finishing. Waiting for 'load' meant this correction could fire seconds
+// later, sometimes right as the user started scrolling — showing up as a
+// layout shift on interaction instead of on initial paint.
+document.addEventListener('DOMContentLoaded', setHeroHeightVar);
 window.addEventListener('resize', setHeroHeightVar);
 
 const headerBubble = document.getElementById('headerBubble');
