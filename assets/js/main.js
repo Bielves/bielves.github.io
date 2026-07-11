@@ -1016,8 +1016,6 @@ function showGalleryImage(n){
   galleryActiveNumber = n;
   galleryMain.classList.remove('has-image');
   galleryMainImg.removeAttribute('src');
-  const ph = placeholderForGallery(IMAGE_PLACEHOLDERS, galleryFormatoKey, galleryFinalKeyForImages, n);
-  galleryMain.style.setProperty('--ph', ph ? `url("${ph}")` : 'none');
   const src = IMG_PATHS.galleryExample(galleryFormatoKey, galleryFinalKeyForImages, n);
   const preload = new Image();
   preload.onload = () => {
@@ -2003,8 +2001,6 @@ function showLightboxItem(){
   if(!p) return;
 
   lightboxPhoto.classList.remove('loaded', 'zoomed', 'dragging');
-  lightboxWrap.classList.remove('loaded');
-  lightboxWrap.style.setProperty('--ph', p.placeholder ? `url("${p.placeholder}")` : 'none');
   resetLightboxPan();
   lightboxSpinner.classList.remove('hidden');
   lightboxTitle.textContent = p.title[LANG];
@@ -2013,7 +2009,6 @@ function showLightboxItem(){
   lightboxPhoto.onload = () => {
     lightboxSpinner.classList.add('hidden');
     lightboxPhoto.classList.add('loaded');
-    lightboxWrap.classList.add('loaded');
     fitLightboxToImage();
   };
   lightboxPhoto.src = webpVariant(p.fullSrc); // already confirmed to exist during discovery
