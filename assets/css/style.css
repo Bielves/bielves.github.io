@@ -462,7 +462,7 @@
     align-items:center;
     justify-content:center;
     font-family:'Ubuntu', -apple-system, sans-serif;
-    color:var(--muted);
+    color:transparent;
     font-size:0.8rem;
     text-align:center;
     padding:10px;
