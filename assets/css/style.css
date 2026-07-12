@@ -129,6 +129,29 @@
     overflow:hidden;
     border-bottom:3px solid var(--border-color);
   }
+  /* Static grain vignette along the top edge of the hero. Same noise
+     source as .footer-grain (kept as a separate rule since the fade
+     shape/size differ), layered under a dark-to-transparent gradient so
+     the texture only reads near the top edge and dissolves into the
+     photo underneath. No live `filter`, no animation — it's a plain
+     background-image, painted once, so it's effectively free. Sits as
+     a ::before so it stacks under .hero-inner (a real, later element in
+     the DOM) automatically, no z-index needed. */
+.hero::before{
+  content:'';
+  position:absolute;
+  top:0; left:0; right:0;
+  height:180px;
+  background:
+    linear-gradient(to bottom, rgba(0,0,0,0.4), transparent),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:cover, 320px 320px;
+  mix-blend-mode:hard-light;
+  opacity:0.95;
+  mask-image:linear-gradient(to bottom, black, transparent);
+  -webkit-mask-image:linear-gradient(to bottom, black, transparent);
+  pointer-events:none;
+}
   .lang-toggle{
     position:absolute;
     top:12px; right:20px;
@@ -217,6 +240,7 @@
     position:relative;
     flex-shrink:0;
     transition:width 0.25s ease, height 0.25s ease;
+    animation:avatarRingScale 3.5s ease-in-out infinite;
   }
   .avatar-ring::before{
     content:'';
@@ -224,7 +248,7 @@
     inset:0;
     border-radius:50%;
     background:conic-gradient(from 0deg, var(--accent), transparent 45%, transparent 55%, var(--accent));
-    animation:avatarRingSpin 7s linear infinite, avatarRingPulse 3s ease-in-out infinite;
+    animation:avatarRingSpin 7s linear infinite, avatarRingPulse 3s ease-in-out infinite, avatarRingGlow 3.5s ease-in-out infinite;
     transition:inset 0.25s ease;
   }
   .avatar-ring:hover::before{
@@ -250,6 +274,20 @@
   @keyframes avatarRingPulse{
     0%, 100%{ opacity:1; }
     50%{ opacity:0.6; }
+  }
+  /* Size pulse on the ring itself (not the ::before layer, which already
+     handles rotation+opacity) so the transform doesn't fight the spin
+     animation on the same property. */
+  @keyframes avatarRingScale{
+    0%, 100%{ transform:scale(1); }
+    50%{ transform:scale(1.03); }
+  }
+  /* Pulsing glow on the gradient border layer itself — animates box-shadow
+     rather than transform, so it runs alongside the spin animation on
+     ::before without overriding it. */
+  @keyframes avatarRingGlow{
+    0%, 100%{ box-shadow:0 0 0 0 var(--accent); }
+    50%{ box-shadow:0 0 14px 2px var(--accent); }
   }
 
   .speech-bubble{
@@ -376,8 +414,7 @@
   #pageContent{
     padding-top:314px; /* hero(260)+border(3) + nav(~48)+border(3), matched to
       actual rendered height so setHeroHeightVar() has ~nothing to correct
-      on load — was a rough 340px guess, causing a real visible shift of
-      main/footer/nav down to the true value once JS measured it */
+      on load */
     will-change:transform;
   }
   main{
@@ -514,12 +551,32 @@
     position:fixed;
     inset:0;
     background:rgba(26,26,26,0.75);
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
     z-index:200;
     align-items:center;
     justify-content:center;
     padding:20px;
   }
+  /* Static noise on its own layer, separate from the tint/blur above,
+     so opacity can be tuned on its own — background-blend-mode has no
+     per-layer opacity control, a separate element does. Still a static
+     image, no animation, so still a one-time paint cost like the blur. */
+  .modal-overlay::before{
+    content:'';
+    position:absolute;
+    inset:0;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size:300px 300px;
+    mix-blend-mode:color-dodge;
+    opacity:0.15; /* <-- tune this */
+    pointer-events:none;
+  }
   .modal-overlay.active{display:flex;}
+  /* Portfolio lightbox only — wants to feel closer to true fullscreen than
+     the other modals (commission config, request form), which keep the
+     roomier default padding on purpose. */
+  #portfolioModalOverlay{padding:10px;}
   .modal-box{
     background:var(--panel);
     border:3px solid var(--modal-border);
@@ -1409,12 +1466,13 @@
   .lightbox-box{
     width:auto;
     max-width:96vw;
-    max-height:92vh;
+    max-height:95vh;
     overflow:hidden; /* the box is sized exactly to the image — nothing to scroll */
   }
   .lightbox-close{
     position:absolute;
-    top:10px; right:10px;
+    top:4px; right:4px;
+    margin:0;
     float:none;
     opacity:0.35;
     transition:opacity 0.2s ease, background 0.2s ease;
@@ -1446,7 +1504,11 @@
   /* Transform (scale + pan translate) is applied inline by the script so
      dragging can move the image freely — see fitLightboxToImage() /
      applyPan() in the script. */
-  .lightbox-photo.zoomed{cursor:grab;}
+  .lightbox-photo.zoomed{
+    cursor:grab;
+    touch-action:none; /* stop the browser treating a pan-drag as a page
+      scroll gesture on mobile — see touchmove handler in main.js */
+  }
   .lightbox-photo.zoomed.dragging{
     cursor:grabbing;
     transition:none;
@@ -1526,6 +1588,12 @@
     /* No hover on touch — start faded in a little more so the caption is
        readable without a tap, but still stay out of the image's way. */
     .lightbox-caption{opacity:0.68;}
+  }
+  /* Zooming in is about inspecting the art itself — the caption would just
+     get in the way while panning around a zoomed-in image. */
+  .lightbox-photo.zoomed ~ .lightbox-caption{
+    opacity:0 !important;
+    pointer-events:none;
   }
 
   /* ---------- GALLERY MAIN IMAGE ZOOM (commission modal) ---------- */
@@ -1631,7 +1699,13 @@
                           Photoshop color-overlay layer. Uses var(--accent)
                           so it's automatically the greenish-blue accent in
                           dark mode and the orange accent in light mode.
-       4. .footer-inner — the actual links, sitting on top undistorted. */
+       4. .footer-grain — static SVG noise (feTurbulence, baked into a data
+                          URI, no live CSS `filter`) blended with
+                          mix-blend-mode so it adds grain texture on top of
+                          the tint. It's a plain background-image, so it
+                          costs nothing beyond a normal image paint — no
+                          per-frame cost since nothing here animates.
+       5. .footer-inner — the actual links, sitting on top undistorted. */
   footer{
     position:relative;
     overflow:hidden;
@@ -1662,6 +1736,15 @@
     opacity:0.5;
     pointer-events:none;
     transition:background 0.2s ease;
+  }
+  .footer-grain{
+    position:absolute;
+    inset:0;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size:320px 320px;
+    mix-blend-mode:color-burn;
+    opacity:0.5;
+    pointer-events:none;
   }
   .footer-inner{
     position:relative;
@@ -1783,6 +1866,7 @@
     /* Modals: less side padding so the lightbox photo can actually fill
        the screen instead of floating in a big margin. */
     .modal-overlay{padding:8px;}
+    #portfolioModalOverlay{padding:4px;}
     .lightbox-box{max-width:98vw; max-height:97vh;}
   }
   @media (max-width:380px){

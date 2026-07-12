@@ -677,7 +677,10 @@ async function loadSlots(){
   if(headerEl) headerEl.textContent = t('slotsLoading');
   if(modalTextEl) modalTextEl.textContent = t('modalSlotsLoading');
   try{
-    const res = await fetch('https://raw.githubusercontent.com/Bielves/bielves.github.io/main/slots.json', { cache: 'no-store' });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    const res = await fetch('https://raw.githubusercontent.com/Bielves/bielves.github.io/main/slots.json', { cache: 'no-store', signal: controller.signal });
+    clearTimeout(timeoutId);
     if(!res.ok) throw new Error('slots.json not found');
     SLOTS = await res.json();
   } catch(err){
@@ -797,9 +800,12 @@ function renderStaticText(){
   const reqAgreeEl = document.getElementById('reqAgree');
   reqAgreeEl.innerHTML = t('reqAgreeHtml').replace(
     '{link}',
-    `<a id="reqTosLink">${t('reqAgreeLinkText')}</a>`
+    `<a id="reqTosLink" href="#">${t('reqAgreeLinkText')}</a>`
   );
-  document.getElementById('reqTosLink').addEventListener('click', openTosPage);
+  document.getElementById('reqTosLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    openTosPage();
+  });
 
   if(currentFormatoKey){
     updateRequestSummary();
@@ -848,6 +854,7 @@ function setThemeIcon(isDark){
   themeToggle.innerHTML = isDark
     ? '<span class="theme-icon sun">☀️</span>'
     : '<span class="theme-icon moon">🌙</span>';
+  themeToggle.title = isDark ? 'Light mode' : 'Dark mode';
 }
 setThemeIcon(document.body.classList.contains('dark'));
 themeToggle.addEventListener('click', () => {
@@ -876,7 +883,8 @@ let navH = 0;
 // Fixed with a FLIP: jump padding-top to its final value in one instant
 // reflow, cancel the visual jump with an equal-and-opposite transform, then
 // let the transform animate back to 0 on the compositor. Same look, no
-// per-frame layout work.
+// per-frame layout work. Note: this still counts as layout shift for CLS
+// purposes each time it fires (accepted tradeoff for the slide animation).
 function syncPageContentPadding(){
   const hidden = topWrap.classList.contains('hide-hero');
   const newPadding = hidden ? navH : heroH + navH;
@@ -908,14 +916,11 @@ function setHeroHeightVar(){
 // DOMContentLoaded, not 'load': hero/nav height only depends on CSS layout
 // (hero has a fixed height, nav sizes from text/padding), not on images
 // finishing. Waiting for 'load' meant this correction could fire seconds
-// later, sometimes right as the user started scrolling — showing up as a
-// layout shift on interaction instead of on initial paint.
+// later, sometimes right as the user started scrolling.
 document.addEventListener('DOMContentLoaded', setHeroHeightVar);
 window.addEventListener('resize', setHeroHeightVar);
 
 const headerBubble = document.getElementById('headerBubble');
-let hasHiddenOnce = false;
-let bubbleHideTimer = null;
 
 let heroScrollTicking = false;
 window.addEventListener('scroll', () => {
@@ -943,24 +948,12 @@ function handleHeroScroll(){
   const nearTop = isHidden ? y < showThreshold : y < hideThreshold;
 
   if(nearTop){
-    // Only reveal the header once we're actually back near the top of the
-    // page — scrolling up a little further down (e.g. while browsing the
-    // bottom of the Portfolio grid) should NOT bring it back.
     const wasHidden = topWrap.classList.contains('hide-hero');
     topWrap.classList.remove('hide-hero');
-    if(wasHidden && hasHiddenOnce){
-      // Brief "welcome back" flash on the reveal itself, not a bubble that
-      // stays stuck open for as long as you happen to linger near the top.
-      headerBubble.classList.add('show');
-      clearTimeout(bubbleHideTimer);
-      bubbleHideTimer = setTimeout(() => headerBubble.classList.remove('show'), 1600);
-    }
     if(wasHidden) syncPageContentPadding();
   } else {
     const wasVisible = !topWrap.classList.contains('hide-hero');
     topWrap.classList.add('hide-hero');
-    hasHiddenOnce = true;
-    headerBubble.classList.remove('show');
     if(wasVisible) syncPageContentPadding();
   }
 }
@@ -2225,10 +2218,10 @@ function fitLightboxToImage(naturalW, naturalH, allowUpscale){
   // sitting below the image, so there's no separate caption height to
   // subtract from the available budget — the image can use nearly the
   // full modal height.
-  const CHROME = 24; // modal border + close button breathing room
+  const CHROME = 12; // modal border + close button breathing room
 
   const maxW = Math.min(window.innerWidth * 0.92, 900);
-  const maxH = Math.max(window.innerHeight * 0.9 - CHROME, window.innerHeight * 0.4);
+  const maxH = Math.max(window.innerHeight * 0.95 - CHROME, window.innerHeight * 0.4);
   const rawScale = Math.min(maxW / naturalW, maxH / naturalH);
   const scale = allowUpscale ? rawScale : Math.min(rawScale, 1);
   const wrapWidth = Math.floor(naturalW * scale);
@@ -2326,9 +2319,10 @@ lightboxPhoto.addEventListener('touchstart', (e) => {
 }, { passive: true });
 lightboxPhoto.addEventListener('touchmove', (e) => {
   if(!isDragging) return;
+  e.preventDefault();
   const t = e.touches[0];
   moveDrag(t.clientX, t.clientY);
-}, { passive: true });
+}, { passive: false });
 lightboxPhoto.addEventListener('touchend', endDrag);
 
 // The caption bubble is low-opacity/clamped by default so it doesn't cover

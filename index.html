@@ -3,8 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Commission Menu</title>
+<title>Bielves — Illustrator & Comic Colorist Commissions</title>
+<meta name="description" content="Commission menu for Bielves — illustrator and comic colorist. Busts, full body, full illustrations, comic coloring, and more. Check open slots and request a commission.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Bielves — Illustrator & Comic Colorist Commissions">
+<meta property="og:description" content="Commission menu for Bielves — illustrator and comic colorist. Busts, full body, full illustrations, comic coloring, and more.">
+<meta property="og:image" content="https://bielves.github.io/images/hero/hero.jpg">
+<meta property="og:url" content="https://bielves.github.io/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Bielves — Illustrator & Comic Colorist Commissions">
+<meta name="twitter:description" content="Commission menu for Bielves — illustrator and comic colorist. Busts, full body, full illustrations, comic coloring, and more.">
+<meta name="twitter:image" content="https://bielves.github.io/images/hero/hero.jpg">
 <link rel="icon" href="/favicon.ico">
+<link rel="preconnect" href="https://raw.githubusercontent.com">
 <link rel="stylesheet" href="assets/css/style.css">
 <link rel="preload" as="font" type="font/woff2" href="assets/webfonts/ubuntu-400.woff2" crossorigin>
 <link rel="preload" as="image"
@@ -86,6 +97,7 @@
   <div class="footer-bg" id="footerBg"></div>
   <div class="footer-blur"></div>
   <div class="footer-tint"></div>
+  <div class="footer-grain"></div>
   <div class="footer-inner">
     <a class="footer-link" href="https://cara.app/bielves" target="_blank" rel="noopener">Cara</a>
     <a class="footer-link" href="https://www.artstation.com/bielves" target="_blank" rel="noopener">ArtStation</a>
@@ -97,7 +109,7 @@
 <!-- ---------- MODAL: No slots available ---------- -->
 <div class="modal-overlay" id="noSlotsModalOverlay">
   <div class="modal-box no-slots-box">
-    <button class="modal-close" id="noSlotsModalClose">&times;</button>
+    <button class="modal-close" id="noSlotsModalClose" aria-label="Close">&times;</button>
     <div class="no-slots-icon">😔</div>
     <h3 id="noSlotsTitle">No slots available</h3>
     <p id="noSlotsText">There are no more slots available, sorry for the inconvenience.</p>
@@ -107,7 +119,7 @@
 <!-- ---------- MODAL: Commission config ---------- -->
 <div class="modal-overlay" id="commissionModalOverlay">
   <div class="modal-box commission-box">
-    <button class="modal-close" id="commissionModalClose">&times;</button>
+    <button class="modal-close" id="commissionModalClose" aria-label="Close">&times;</button>
 
     <div class="commission-layout">
 
@@ -202,7 +214,7 @@
 <!-- ---------- MODAL: Commission Request form ---------- -->
 <div class="modal-overlay" id="requestModalOverlay">
   <div class="modal-box" style="max-width:600px;">
-    <button class="modal-close" id="requestModalClose">&times;</button>
+    <button class="modal-close" id="requestModalClose" aria-label="Close">&times;</button>
     <div class="modal-body">
       <h2 id="reqTitle">Commission Request</h2>
       <p class="req-intro" id="reqIntro"></p>
@@ -271,7 +283,7 @@
 <!-- ---------- MODAL: Portfolio lightbox ---------- -->
 <div class="modal-overlay" id="portfolioModalOverlay">
   <div class="modal-box lightbox-box">
-    <button class="modal-close lightbox-close" id="portfolioModalClose">&times;</button>
+    <button class="modal-close lightbox-close" id="portfolioModalClose" aria-label="Close">&times;</button>
     <div class="lightbox-wrap">
       <img class="lightbox-photo" id="lightboxPhoto" alt="">
       <button class="lightbox-nav-btn prev" id="lightboxPrev" title="Anterior">‹</button>
