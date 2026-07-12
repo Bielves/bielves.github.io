@@ -958,6 +958,20 @@ function handleHeroScroll(){
   }
 }
 
+// Pauses the avatar-ring and header dot pulse animations (see
+// .hero-offscreen in style.css) whenever the hero itself isn't actually
+// visible — covers both the hide-hero slide-up above and simply being
+// scrolled far enough down that the hero (now fixed/off-canvas) doesn't
+// intersect the viewport at all. CSS animations keep running on elements
+// that are offscreen/hidden-by-transform unless explicitly paused, so
+// without this the ring/dot would animate forever in the background even
+// while nobody could see them.
+const heroVisibilityObserver = new IntersectionObserver((entries) => {
+  const hero = entries[0].target;
+  hero.classList.toggle('hero-offscreen', !entries[0].isIntersecting);
+}, { threshold: 0 });
+heroVisibilityObserver.observe(document.getElementById('heroBanner'));
+
 // Hovering the avatar also reveals the speech bubble, regardless of scroll state
 const avatarPlaceholder = document.getElementById('avatarPlaceholder');
 avatarPlaceholder.addEventListener('mouseenter', () => {

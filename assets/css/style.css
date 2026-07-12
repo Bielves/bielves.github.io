@@ -48,6 +48,11 @@
     --star:#c99a2e;
     --paypal:#1b3e94;
     --pix:#2ea56f;
+    /* Shared static grain texture (SVG feTurbulence, baked as a data URI) —
+       used by .hero::before, .footer-grain, and .modal-overlay::before.
+       One definition instead of three identical copies, so tweaking grain
+       coarseness/size only has to happen in one place. */
+    --noise-svg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
   body.dark{
     --ink:#eef2f1;
@@ -144,7 +149,7 @@
   height:180px;
   background:
     linear-gradient(to bottom, rgba(0,0,0,0.4), transparent),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    var(--noise-svg);
   background-size:cover, 320px 320px;
   mix-blend-mode:hard-light;
   opacity:0.95;
@@ -231,19 +236,22 @@
     gap:14px;
     position:relative;
   }
-  /* Slow-rotating gradient ring around the avatar. The gradient lives on
-     a ::before pseudo-element behind the avatar, not on .avatar-ring
-     itself — rotating the wrapper would rotate the avatar photo along
-     with it, since the photo is a normal child inside that box. Keeping
-     the spin on a separate layer means only the ring turns; the avatar
-     stays put. */
+  /* Gradient ring around the avatar, on a ::before pseudo-element behind
+     the avatar photo. Static now (no rotation) — the whole ring+avatar
+     just pulses together, see .avatar-ring's animation below. */
   .avatar-ring{
     width:132px; height:132px;
     border-radius:50%;
     position:relative;
     flex-shrink:0;
     transition:width 0.25s ease, height 0.25s ease;
-    animation:avatarRingScale 3.5s ease-in-out infinite;
+    animation:avatarRingScale 10s ease-in-out infinite;
+  }
+  /* Toggled off by an IntersectionObserver in main.js watching the hero —
+     no reason to keep the avatar/dot pulses running (however cheap) once
+     the hero has scrolled out of view. */
+  .hero.hero-offscreen .avatar-ring{
+    animation-play-state:paused;
   }
   .avatar-ring::before{
     content:'';
@@ -251,7 +259,6 @@
     inset:0;
     border-radius:50%;
     background:conic-gradient(from 0deg, var(--accent), transparent 45%, transparent 55%, var(--accent));
-    animation:avatarRingSpin 7s linear infinite, avatarRingPulse 3s ease-in-out infinite, avatarRingGlow 3.5s ease-in-out infinite;
     transition:inset 0.25s ease;
   }
   .avatar-ring:hover::before{
@@ -268,29 +275,16 @@
     background-size:cover;
     background-position:center;
     border:3px solid var(--avatar-border);
-    to{ transform:rotate(360deg); }
   }
-  /* Subtle breathing effect — opacity only (rotation handles transform
-     separately above), so the two animations run independently without
-     fighting over the same CSS property. Kept gentle: never fully fades,
-     just softly dims and brightens. */
-  @keyframes avatarRingPulse{
-    0%, 100%{ opacity:1; }
-    50%{ opacity:0.6; }
-  }
-  /* Size pulse on the ring itself (not the ::before layer, which already
-     handles rotation+opacity) so the transform doesn't fight the spin
-     animation on the same property. */
+  /* Whole ring+avatar pulses together as one unit — scaling the parent
+     scales its ::before (the gradient ring) along with it, so a single
+     animation here is enough; no separate animation needed on ::before
+     anymore. Three slow pulses in a row, then holds still for a few
+     seconds before repeating. */
   @keyframes avatarRingScale{
-    0%, 100%{ transform:scale(1); }
-    50%{ transform:scale(1.03); }
-  }
-  /* Pulsing glow on the gradient border layer itself — animates box-shadow
-     rather than transform, so it runs alongside the spin animation on
-     ::before without overriding it. */
-  @keyframes avatarRingGlow{
-    0%, 100%{ box-shadow:0 0 0 0 var(--accent); }
-    50%{ box-shadow:0 0 14px 2px var(--accent); }
+    0%, 48%, 100%{ transform:scale(1); }
+    8%, 24%, 40%{ transform:scale(1.06); }
+    16%, 32%{ transform:scale(1); }
   }
 
   .speech-bubble{
@@ -570,7 +564,7 @@
     content:'';
     position:absolute;
     inset:0;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-image:var(--noise-svg);
     background-size:300px 300px;
     mix-blend-mode:color-dodge;
     opacity:0.25; /* <-- tune this */
@@ -1063,6 +1057,9 @@
     align-items:center;
     gap:6px;
   }
+  .hero.hero-offscreen .commission-slots .dot{
+    animation-play-state:paused;
+  }
   .modal-slots-status{
     display:flex;
     align-items:center;
@@ -1086,11 +1083,12 @@
     flex-shrink:0;
     background:#3ddc84;
     box-shadow:0 0 0 3px rgba(61,220,132,0.35), 0 0 8px rgba(61,220,132,0.8);
-    animation:dotBreathe 3.2s ease-in-out infinite;
+    transition:width 0.25s ease, height 0.25s ease;
+    animation:avatarRingScale 5s ease-in-out infinite;
   }
   .dot.unavailable{
     background:#e2453a;
-    box-shadow:0 0 0 3px rgba(226,69,58,0.35), 0 0 8px rgba(226,69,58,0.8);
+    box-shadow:0 0 0 3px #e2453a9f, 0 0 8px rgba(226,69,58,0.8);
   }
   .modal-slots-status .dot{
     width:11px; height:11px;
@@ -1098,15 +1096,16 @@
     flex-shrink:0;
     background:#3ddc84;
     box-shadow:0 0 0 3px rgba(61,220,132,0.35), 0 0 8px rgba(61,220,132,0.8);
-    animation:dotBreathe 3.2s ease-in-out infinite;
+    animation:dotBreathe 1.5s ease-in-out infinite;
   }
   .modal-slots-status.closed .dot{
     background:#e2453a;
     box-shadow:0 0 0 3px rgba(226,69,58,0.35), 0 0 8px rgba(226,69,58,0.8);
   }
   @keyframes dotBreathe{
-    0%, 100%{ opacity:1; }
-    50%{ opacity:0.75; }
+    0%, 62%, 100%{ opacity:1; transform:scale(1); }
+    8%{ opacity:0.55; transform:scale(1.5); }
+    16%{ opacity:1; transform:scale(1); }
   }
 
   .no-slots-box{
@@ -1482,7 +1481,7 @@
     margin:0;
     float:none;
     opacity:0.35;
-    transition:opacity 0.2s ease, background 0.2s ease;
+    transition:opacity 0.2s ease, background 0.2s ease, transform 0.15s ease;
   }
   .lightbox-close:hover{opacity:1;}
 
@@ -1751,7 +1750,7 @@
   .footer-grain{
     position:absolute;
     inset:0;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-image:var(--noise-svg);
     background-size:320px 320px;
     mix-blend-mode:color-burn;
     opacity:0.5;
