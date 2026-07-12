@@ -587,15 +587,15 @@
   }
   .modal-close{
     position:sticky;
-    top:0;
+    top:8px;
     float:right;
-    width:36px; height:36px;
+    width:32px; height:32px;
     background:var(--ink);
     color:var(--paper);
     border:none;
     border-radius:50%;
-    margin:10px 10px 0 0;
-    font-size:1.1rem;
+    margin:8px 4px 0 0;
+    font-size:1rem;
     cursor:pointer;
     z-index:5;
     transition:background 0.2s ease, transform 0.15s ease;

@@ -390,6 +390,7 @@ function startCardImageCycle(container, formatoKey){
   let paused = false;
   let destroyed = false;
   let currentSrc = null;
+  let turnToken = 0; // bumped every turn; lets async callbacks (real image load, late-arriving placeholder) detect they belong to a turn that's since moved on, and no-op instead of clobbering
   let validCombos = null; // null = discovery still running; [] = confirmed nothing exists
   container.addEventListener('mouseenter', () => paused = true);
   container.addEventListener('mouseleave', () => paused = false);
@@ -433,22 +434,39 @@ function startCardImageCycle(container, formatoKey){
     // Blur-up: paint the tiny inlined placeholder the instant this turn
     // fires (no network wait), so the crossfade brings in a blurred
     // preview immediately instead of nothing — then hard-swap to the
-    // real photo the moment it's actually decoded. Falls back to the old
-    // behavior (set fullSrc directly) if this image has no placeholder
-    // entry yet, or IMAGE_PLACEHOLDERS hasn't resolved yet.
+    // real photo the moment it's actually decoded.
+    //
+    // IMAGE_PLACEHOLDERS itself may not have resolved yet at this exact
+    // instant — image-placeholders.json is one big file covering every
+    // image on the site, and on a slow connection it can easily still be
+    // in flight when this turn fires (even after the much smaller
+    // image-manifest.json has already resolved). Rather than treating
+    // "not ready yet" as "no placeholder, fall back to fullSrc" (which
+    // silently skips the blur-up whenever that race goes badly), hook
+    // into IMAGE_PLACEHOLDERS_PROMISE too — if it resolves before the
+    // real image finishes loading, the blur still gets its turn.
+    // turnToken + realLoaded guard against a stale/later turn or a real
+    // image that already won the race.
+    turnToken++;
+    const myToken = turnToken;
+    let realLoaded = false;
+
     const ph = placeholderForGallery(IMAGE_PLACEHOLDERS, formatoKey, combo.finalKey, combo.n);
     showLayer.style.backgroundImage = `url("${ph || fullSrc}")`;
-    if(ph){
-      const img = new Image();
-      img.onload = () => {
-        // Guard against a slow load resolving after this layer has
-        // already moved on to a later turn's image.
-        if(showLayer.style.backgroundImage.includes(ph)){
-          showLayer.style.backgroundImage = `url("${fullSrc}")`;
-        }
-      };
-      img.src = fullSrc;
+    if(!ph){
+      IMAGE_PLACEHOLDERS_PROMISE.then(() => {
+        if(myToken !== turnToken || realLoaded) return; // a newer turn started, or the real image already won
+        const latePh = placeholderForGallery(IMAGE_PLACEHOLDERS, formatoKey, combo.finalKey, combo.n);
+        if(latePh) showLayer.style.backgroundImage = `url("${latePh}")`;
+      });
     }
+
+    const img = new Image();
+    img.onload = () => {
+      realLoaded = true;
+      if(myToken === turnToken) showLayer.style.backgroundImage = `url("${fullSrc}")`;
+    };
+    img.src = fullSrc;
     showLayer.classList.add('active');
     hideLayer.classList.remove('active');
     onA = !onA;
@@ -1290,6 +1308,14 @@ function openCommissionModal(formatoKey, preserveState, preselectFinal, preselec
   currencySelect.value = DISPLAY_CURRENCY;
   atualizarModalPreco();
   commissionModalOverlay.classList.add('active');
+
+  if(!preserveState){
+    // Must run after .active is applied — setting scrollTop while the
+    // overlay is still display:none is a no-op in most browsers, so the
+    // old scroll position would otherwise silently survive the reopen.
+    tosFull.scrollTop = 0;
+    commissionModalOverlay.querySelector('.modal-box').scrollTop = 0;
+  }
 }
 
 function atualizarModalPreco(){
