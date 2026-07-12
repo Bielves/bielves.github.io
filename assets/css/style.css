@@ -1508,6 +1508,7 @@
     cursor:grab;
     touch-action:none; /* stop the browser treating a pan-drag as a page
       scroll gesture on mobile — see touchmove handler in main.js */
+    will-change:transform;
   }
   .lightbox-photo.zoomed.dragging{
     cursor:grabbing;

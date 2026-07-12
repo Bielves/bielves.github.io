@@ -2252,8 +2252,15 @@ function resetLightboxPan(){
   panX = 0; panY = 0;
   lightboxPhoto.style.transform = '';
 }
+// Measured once per drag (see startDrag) instead of on every move — calling
+// getBoundingClientRect() inside the move handler forces a synchronous
+// layout flush on every single touchmove/mousemove, which is cheap enough
+// on desktop to go unnoticed but noticeably stutters on mobile since it's
+// fighting the drag loop dozens of times a second. The wrap's size doesn't
+// change mid-drag, so there's nothing gained by re-measuring every frame.
+let dragRect = null;
 function clampPan(){
-  const rect = lightboxWrap.getBoundingClientRect();
+  const rect = dragRect || lightboxWrap.getBoundingClientRect();
   const maxPanX = (rect.width * (ZOOM_SCALE - 1)) / 2;
   const maxPanY = (rect.height * (ZOOM_SCALE - 1)) / 2;
   panX = Math.max(-maxPanX, Math.min(maxPanX, panX));
@@ -2293,6 +2300,7 @@ function startDrag(x, y){
   isDragging = true;
   dragMoved = false;
   lightboxPhoto.classList.add('dragging');
+  dragRect = lightboxWrap.getBoundingClientRect(); // measured once per drag — see clampPan
   dragStartX = x - panX;
   dragStartY = y - panY;
 }
@@ -2307,6 +2315,7 @@ function moveDrag(x, y){
 function endDrag(){
   if(!isDragging) return;
   isDragging = false;
+  dragRect = null;
   lightboxPhoto.classList.remove('dragging');
 }
 
