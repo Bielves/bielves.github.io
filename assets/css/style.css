@@ -551,8 +551,8 @@
     position:fixed;
     inset:0;
     background:rgba(26,26,26,0.75);
-    backdrop-filter:blur(8px);
-    -webkit-backdrop-filter:blur(8px);
+    backdrop-filter:blur(8px) contrast(4.15);
+    -webkit-backdrop-filter:blur(8px) contrast(4.15);
     z-index:200;
     align-items:center;
     justify-content:center;
@@ -569,7 +569,7 @@
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     background-size:300px 300px;
     mix-blend-mode:color-dodge;
-    opacity:0.15; /* <-- tune this */
+    opacity:0.25; /* <-- tune this */
     pointer-events:none;
   }
   .modal-overlay.active{display:flex;}
